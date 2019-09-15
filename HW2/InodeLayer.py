@@ -42,13 +42,13 @@ class InodeLayer():
     by the inode.blk_numbers.
     '''
     def write(self, inode, offset, data):
-        inode.time_modified = str(datetime.datetime.now())[:19] # change time modified
         inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
         
         # make sure the inode is not a directory before writing to the blocks.
         if inode.type == config.INODETYPE_FILE:
             # If file is a block, overwrite data beginning at the offset.
             fileSizeError = self.__write_to_offset(inode, offset, data)
+            inode.time_modified = str(datetime.datetime.now())[:19] # change time modified
             
             # if writing from an offset too large for the file size, return an error.
             if fileSizeError: return -1
@@ -63,12 +63,14 @@ class InodeLayer():
     from blocks indexed by the inode objects.
     '''
     def read(self, inode, offset, length):
-        # change time accessed
-        inode.time_accessed = str(datetime.datetime.now())[:19]
+        
+        # find the offset's block number
+        blockOffset = offset / config.BLOCK_SIZE
+        offset = offset % config.BLOCK_SIZE
         
         # go through all blocks until number of requested bytes are read.
         data = []
-        for i in range(len(inode.blk_numbers)):
+        for i in range(blockOffset, len(inode.blk_numbers)):
             if inode.blk_numbers[i] != -1: # only continues to check blocsk if the current block is defined
                 block = interface.BLOCK_NUMBER_TO_DATA_BLOCK(inode.blk_numbers[i]) # next 512 bytes of data
                 
@@ -88,12 +90,39 @@ class InodeLayer():
                     offset = 0                                   # beginning of the next block
                     
             else: return -1 # error: block number not valid
-        print( "".join(data))           
+        
+        # change time accessed
+        inode.time_accessed = str(datetime.datetime.now())[:19]
         return (inode, "".join(data)) # returns a tuple of read data and the updated inode
     
-    #Copy the inputInode's contents to another inode.
+    '''
+    SUMMARY: copy
+    Deep copy the contents of the passed inode to a new inode.
+    '''
     def copy(self, inode):
-        return None
+        newInode = self.new_inode(config.INODETYPE_FILE)
+        self.free_data_block(newInode, 0) # clear all data located in the new inode
+        
+        # for all valid blocks in the original inode, get a valid data block,
+        # copy the contents of the original block into the newly acquired block,
+        # and assign the block number to the newInode's blk_numbers.
+        for i in range(0, len(inode.blk_numbers)):
+            origBlockNum = inode.blk_numbers[i]
+            if origBlockNum == -1:
+                continue # do not attempt to copy the contents of invalid block numbers
+            else:
+                
+                # copy the contents of the block into the new block and assign the 
+                # block to the newInode blk_numbers map.
+                newBlockNum = interface.get_valid_data_block()
+                #dataToCopy = interface.BLOCK_NUMBER_TO_DATA_BLOCK(origBlockNum) # read contents from the original block num
+                #interface.update_data_block(newBlockNum, dataToCopy) # write the contents to a new block number
+                newInode.blk_numbers[i] = newBlockNum
+                
+                inode, dataToCopy = self.read(inode, i*512, 512) # read original contents/modify time
+                self.write(newInode, i*512, dataToCopy) # write to copy/modify time
+                
+        return newInode
 
     def status(self):
         print(MemoryInterface.status())
@@ -148,8 +177,7 @@ class InodeLayer():
         blockList = NESTED_get_init_block_list(iBlock)
 
         # Do not allow the file to exceed the maximum file size the inode can handle.
-        # 8 subtracted from the block numbers for the file name.
-        if iBlock < len(inode.blk_numbers) - config.MAX_FILE_NAME_SIZE:
+        if iBlock < len(inode.blk_numbers):
             
             charCnt = 0 # input string indexer
             while charCnt < len(string):
@@ -172,9 +200,14 @@ class InodeLayer():
             return 0
 
         else:
-            return -1
+            return -1   
 
-if __name__ == '__main__':
+'''
+SUMMARY: test00_createAccessModifyTime
+The purpose of this script is to test whether the write and read functions 
+correctly modify the time_created, time_accessed, and time_modified parameters.
+'''
+def test00_createAccessModifyTime():
     InodeLay = InodeLayer()
     inode = InodeLay.new_inode(config.INODETYPE_FILE) # create the inode object of file type
     
@@ -194,6 +227,121 @@ if __name__ == '__main__':
     print "CREATION TIME: " + inode.time_created
     print "ACCESS TIME: " + inode.time_accessed
     print "MODIFY TIME: " + inode.time_modified
-   
-    #InodeLay.status()
 
+    return 0
+
+'''
+SUMMARY: test01_rwTwoBlocks
+The purpose of this script is to test whether the InodeLayer can write a string
+over more than 1 block of data and read back the same data.
+'''
+def test01_rwTwoBlocks():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_FILE) # create the inode object of file type
+    inputString  = "Hello world"
+    
+    # test between multiple blocks ("Hello " => block 8, "world" => block 9)
+    InodeLay.write(inode, 506, inputString) # write to the inode object
+    (inode, mess) = InodeLay.read(inode, 506, 11) # read back the entire string from the inode object
+    InodeLay.status()
+    
+    if mess == inputString:
+        return 0
+    else:
+        return -1
+  
+'''
+SUMMARY: test02_deepCopy
+The purpose of this script is to test whether the copy function will copy all
+the file contents of the original inode into a new inode with different block
+numbers.
+'''
+def test02_deepCopy():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_FILE)
+    
+    # load data into the first inode
+    messages = []
+    for i in range(0, 15):
+        messages.append("Test string for block " + str(i))
+        InodeLay.write(inode, i*512, messages[i])
+    
+    # copy the data from the original inode into the new inode
+    print "Memory blocks BEFORE copy."
+    InodeLay.status() # memory blocks before copy
+    newInode = InodeLay.copy(inode)
+    print "Memory blocks AFTER copy."
+    InodeLay.status() # memory blocks after copy
+    
+    # check if the contents of the new inode are equal to the loaded data in
+    # the original inode
+    for i in range(0,15):
+        (newInode, readData) = InodeLay.read(newInode, i*512, len(messages[i]))
+        if readData != messages[i]:
+            print "ORIGINAL: " + messages[i]
+            print "COPIED: " + readData
+            return -1
+    return 0
+
+'''
+SUMMARY: This test confirms requirement 1: Your design must return an error if
+the inode type is not a file.
+'''
+def test03_dirTest():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_DIR)
+    
+    # try writing to the directory 
+    inode = InodeLay.write(inode, 0, "This write should fail")
+    InodeLay.status()
+    if inode == -1:
+        print "Could not write to directory"
+        return 0
+    else:
+        print "ERROR: Wrote to a directory"
+        return -1
+    
+def test04_fileSizeError():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_FILE)
+    
+    # try writing too much data to the file
+    err = InodeLay.write(inode, 512*20 - 10, "Only some of this string should stay")
+    InodeLay.status()
+    if err == -1:
+        print "Could not write larger than file size"
+        data = InodeLay.read(inode, 512*20 - 10, 10) # read all the data possible
+        if data == "Only some ":
+            return 0
+        else:
+            return -1
+    else:
+        return -1
+
+if __name__ == '__main__':
+
+    # names of all tests being run
+    testbenches = [
+         test00_createAccessModifyTime,
+         test01_rwTwoBlocks,
+         test02_deepCopy,
+         test03_dirTest,
+         test04_fileSizeError
+    ]
+    
+    messages = []
+    
+    # run all tests and mark when it passed or failled
+    for test in testbenches:
+        passed = test()
+        message = test.__name__ + ": "
+        if passed == 0:
+            message += "OK"
+        else:
+            message += "failed"
+        messages.append(message)
+        
+    # after all tests have been run, output the results.
+    print "\n+-----+-----+-----+-----+-----+-----+-----+-----+"
+    for message in messages: print message
+    print "+-----+-----+-----+-----+-----+-----+-----+-----+\n"
