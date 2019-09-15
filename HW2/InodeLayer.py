@@ -44,18 +44,17 @@ class InodeLayer():
     def write(self, inode, offset, data):
         inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
         
-        # make sure the inode is not a directory before writing to the blocks.
-        if inode.type == config.INODETYPE_FILE:
-            # If file is a block, overwrite data beginning at the offset.
-            fileSizeError = self.__write_to_offset(inode, offset, data)
-            inode.time_modified = str(datetime.datetime.now())[:19] # change time modified
-            
-            # if writing from an offset too large for the file size, return an error.
-            if fileSizeError: return -1
-            
-        else: return -1 # attempting to write to a directory
+        blockOffset = offset / config.BLOCK_SIZE
         
-        return inode # updated inode returned
+        # make sure the inode is not a directory before writing to the blocks.
+        if inode.type == config.INODETYPE_FILE and blockOffset < len(inode.blk_numbers):
+            # If file is a block, overwrite data beginning at the offset.
+            self.__write_to_offset(inode, offset, data)
+            inode.time_modified = str(datetime.datetime.now())[:19] # change time modified
+            return inode # updated inode
+            
+        else: 
+            return -1 # attempting to write to a directory
 
     '''
     SUMMARY: read
@@ -160,6 +159,10 @@ class InodeLayer():
         # Output list either contains data from the indexed map's blocks -- or all NULL values
         # to represent a freshly initialized block.
         def NESTED_get_init_block_list(nBlockIdx):
+            # if the block index is out of range, return an error.
+            if nBlockIdx >= len(inode.blk_numbers): return -1
+            
+            # find a block to write data to.
             if inode.blk_numbers[nBlockIdx] > -1:
                 return list(interface.BLOCK_NUMBER_TO_DATA_BLOCK(inode.blk_numbers[nBlockIdx]))
             else:
@@ -190,6 +193,7 @@ class InodeLayer():
                     NESTED_write_filesystem_map(iBlock, blockList)
                     iBlock += 1 # go to the next 4 characters of the file
                     blockList = NESTED_get_init_block_list(iBlock) 
+                    if blockList == -1: return -1 # stop writing if in the last block.
 
                 # Replace the next offset value with the string contents.
                 blockList[offset] = string[charCnt]
@@ -211,22 +215,31 @@ def test00_createAccessModifyTime():
     InodeLay = InodeLayer()
     inode = InodeLay.new_inode(config.INODETYPE_FILE) # create the inode object of file type
     
+    print "TIME BEFORE WRITE"
     print "CREATION TIME: " + inode.time_created
     print "ACCESS TIME: " + inode.time_accessed
     print "MODIFY TIME: " + inode.time_modified
     print ""
-    time.sleep(1)
 
     #InodeLay.write(inode, 0, "Test string") # write to the inode object
     #InodeLay.read(inode, 0, 5) # read back the entire string from the inode object
     
     # test between multiple blocks ("Hello " => block 8, "world" => block 9)
+    time.sleep(1)
     InodeLay.write(inode, 506, "Hello world") # write to the inode object
-    InodeLay.read(inode, 506, 11) # read back the entire string from the inode object
-
+    print "TIME AFTER WRITE / BEFORE READ"
     print "CREATION TIME: " + inode.time_created
     print "ACCESS TIME: " + inode.time_accessed
     print "MODIFY TIME: " + inode.time_modified
+    print ""
+    
+    time.sleep(1)
+    InodeLay.read(inode, 506, 11) # read back the entire string from the inode object
+    print "TIME AFTER READ"
+    print "CREATION TIME: " + inode.time_created
+    print "ACCESS TIME: " + inode.time_accessed
+    print "MODIFY TIME: " + inode.time_modified
+    print ""
 
     return 0
 
@@ -301,21 +314,43 @@ def test03_dirTest():
         print "ERROR: Wrote to a directory"
         return -1
     
+'''
+SUMMARY: This function tests that the InodeLayer will not allow writes when 
+the initial offset is at a block greater than the maximum INODE_SIZE.
+'''
 def test04_fileSizeError():
     InodeLay = InodeLayer()
     inode = InodeLay.new_inode(config.INODETYPE_FILE)
     
     # try writing too much data to the file
-    err = InodeLay.write(inode, 512*20 - 10, "Only some of this string should stay")
+    inode = InodeLay.write(inode, 512*len(inode.blk_numbers) + 10, "None of this string should be written")
     InodeLay.status()
-    if err == -1:
-        print "Could not write larger than file size"
-        data = InodeLay.read(inode, 512*20 - 10, 10) # read all the data possible
-        if data == "Only some ":
-            return 0
-        else:
-            return -1
+
+    if inode == -1:
+        print "No data was written"
+        return 0
     else:
+        print "ERROR: Data was written"
+        return -1
+    
+'''
+SUMMARY: Tests that data can be written to the last block before INODE_SIZE before
+being truncated when attempting to overflow to the next block.
+'''
+def test05_trucateFileSize():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_FILE)
+    
+    # try writing too much data to the file
+    inode = InodeLay.write(inode, 512*len(inode.blk_numbers) - 10, "Only some of this string should stay")
+    InodeLay.status()
+
+    inode, data = InodeLay.read(inode, 512*len(inode.blk_numbers) - 10, 10) # read all the data possible
+    if data == "Only some ":
+        print "Data was successfuly truncated"
+        return 0
+    else:
+        print "Data was NOT truncated"
         return -1
 
 if __name__ == '__main__':
@@ -326,7 +361,8 @@ if __name__ == '__main__':
          test01_rwTwoBlocks,
          test02_deepCopy,
          test03_dirTest,
-         test04_fileSizeError
+         test04_fileSizeError,
+         test05_trucateFileSize
     ]
     
     messages = []
