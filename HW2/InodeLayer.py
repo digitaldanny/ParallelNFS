@@ -63,6 +63,9 @@ class InodeLayer():
     '''
     def read(self, inode, offset, length):
         
+        # return an error if the input inode is not a file type.
+        if inode.type != config.INODETYPE_FILE: return -1
+        
         # find the offset's block number
         blockOffset = offset / config.BLOCK_SIZE
         offset = offset % config.BLOCK_SIZE
@@ -99,6 +102,10 @@ class InodeLayer():
     Deep copy the contents of the passed inode to a new inode.
     '''
     def copy(self, inode):
+        
+        # return an error if the input inode is not a file type.
+        if inode.type != config.INODETYPE_FILE: return -1
+        
         newInode = self.new_inode(config.INODETYPE_FILE)
         self.free_data_block(newInode, 0) # clear all data located in the new inode
         
@@ -241,6 +248,7 @@ def test00_createAccessModifyTime():
     print "MODIFY TIME: " + inode.time_modified
     print ""
 
+    InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
     return 0
 
 '''
@@ -259,6 +267,7 @@ def test01_rwTwoBlocks():
     InodeLay.status()
     
     if mess == inputString:
+        InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
         return 0
     else:
         return -1
@@ -275,7 +284,7 @@ def test02_deepCopy():
     
     # load data into the first inode
     messages = []
-    for i in range(0, 15):
+    for i in range(0, 4):
         messages.append("Test string for block " + str(i))
         InodeLay.write(inode, i*512, messages[i])
     
@@ -288,12 +297,15 @@ def test02_deepCopy():
     
     # check if the contents of the new inode are equal to the loaded data in
     # the original inode
-    for i in range(0,15):
+    for i in range(0,4):
         (newInode, readData) = InodeLay.read(newInode, i*512, len(messages[i]))
         if readData != messages[i]:
             print "ORIGINAL: " + messages[i]
             print "COPIED: " + readData
             return -1
+    
+    InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
+    InodeLay.free_data_block(newInode, 0) # reset the memory before goinig to the next test
     return 0
 
 '''
@@ -307,6 +319,7 @@ def test03_dirTest():
     # try writing to the directory 
     inode = InodeLay.write(inode, 0, "This write should fail")
     InodeLay.status()
+    
     if inode == -1:
         print "Could not write to directory"
         return 0
@@ -346,17 +359,36 @@ def test05_trucateFileSize():
     InodeLay.status()
 
     inode, data = InodeLay.read(inode, 512*len(inode.blk_numbers) - 10, 10) # read all the data possible
+    
     if data == "Only some ":
+        InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
         print "Data was successfuly truncated"
         return 0
     else:
         print "Data was NOT truncated"
         return -1
+    
+'''
+SUMMARY: Tests that a very large string can be written to all blocks AND truncate
+at the end.
+'''
+def test06_allBlockRW():
+    InodeLay = InodeLayer()
+    inode = InodeLay.new_inode(config.INODETYPE_FILE)
+    
+    message = "a" * 512 * (len(inode.blk_numbers) + 1)
+    InodeLay.write(inode, 0, message)
+    
+    #inode, data = InodeLay.read(inode, 0, )
+    InodeLay.status()
+    InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
+    return 0
 
 if __name__ == '__main__':
 
     # names of all tests being run
     testbenches = [
+         test06_allBlockRW,
          test00_createAccessModifyTime,
          test01_rwTwoBlocks,
          test02_deepCopy,
@@ -369,6 +401,7 @@ if __name__ == '__main__':
     
     # run all tests and mark when it passed or failled
     for test in testbenches:
+        print "\n****************** RUNNING NEXT TEST ******************\n"
         passed = test()
         message = test.__name__ + ": "
         if passed == 0:
