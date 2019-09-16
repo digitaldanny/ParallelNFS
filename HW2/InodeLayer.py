@@ -42,12 +42,16 @@ class InodeLayer():
     by the inode.blk_numbers.
     '''
     def write(self, inode, offset, data):
-        inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
         
+        # return an error if the input inode is not a file type.
+        if inode.type != config.INODETYPE_FILE: return -1
+        
+        inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
+
         blockOffset = offset / config.BLOCK_SIZE
         
         # make sure the inode is not a directory before writing to the blocks.
-        if inode.type == config.INODETYPE_FILE and blockOffset < len(inode.blk_numbers):
+        if blockOffset < len(inode.blk_numbers):
             # If file is a block, overwrite data beginning at the offset.
             self.__write_to_offset(inode, offset, data)
             inode.time_modified = str(datetime.datetime.now())[:19] # change time modified
