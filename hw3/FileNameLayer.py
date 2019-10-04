@@ -83,9 +83,26 @@ class FileNameLayer():
         return interface.write(childInodeNum, offset, data, parentInodeNum)
 
 
-    #HARDLINK
+    '''
+    SUMMARY: link
+    This function creates a hard link to the old_path's core file inode from the new_path's
+    directory inode.
+    '''
     def link(self, old_path, new_path, inode_number_cwd):
-        return 0
+        
+        # get the inode number for the old_path's core file.
+        (unusedParentInodeNum, childInodeNum) = self.__decode_parent_child_inode_nums(old_path, inode_number_cwd)
+        if (unusedParentInodeNum, childInodeNum) == (-1, -1): return -1
+    
+        # get the filename to map to the new_path's parent
+        pathComponents = new_path.split('/') # last value of the path is the file name
+        childName = pathComponents[-1]
+        
+        # get the inode number for the new_path's parent directory.
+        parentInodeNum = self.LOOKUP(new_path, inode_number_cwd) 
+        if parentInodeNum == -1: -1
+        
+        return interface.link(childInodeNum, childName, parentInodeNum)
 
 
     '''
@@ -93,10 +110,6 @@ class FileNameLayer():
     This function decrements the inode's reference count. Additionally, if the
     reference count becomes equal to 0, the inode's blk_number contents are 
     deallocated and the inode is reset.
-    
-    ~ Decrement target inode's reference count.
-    ~ If reference count == 0 && filetype == file, delete.
-    ~ If 
     '''
     def unlink(self, path, inode_number_cwd):
         if path == "": 
@@ -114,9 +127,16 @@ class FileNameLayer():
         return interface.unlink(childInodeNum, parentInodeNum, fileName)
 
 
-    #MOVE
+    '''
+    SUMMARY: mv
+    This function moves directory paths AND renames the file.
+    '''
     def mv(self, old_path, new_path, inode_number_cwd):
-        return 0
+        err = self.link(old_path, new_path, inode_number_cwd)
+        if err == -1: return -1
+        
+        err = self.unlink(old_path, inode_number_cwd)
+        return err
 
 
     '''

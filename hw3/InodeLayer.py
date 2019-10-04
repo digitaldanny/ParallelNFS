@@ -49,6 +49,9 @@ class InodeLayer():
         # return an error if the input inode is not a file type.
         if inode.type != INODETYPE_FILE: return -1
         
+        # file size error handler
+        if offset > inode.size or offset < 0: return -1
+        
         inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
 
         blockOffset = offset / config.BLOCK_SIZE
@@ -72,6 +75,9 @@ class InodeLayer():
         
         # return an error if the input inode is not a file type.
         if inode.type != INODETYPE_FILE: return -1
+        
+        # file size error handler
+        if offset > inode.size or offset < 0: return -1
         
         # find the offset's block number
         blockOffset = offset / config.BLOCK_SIZE
@@ -213,10 +219,10 @@ class InodeLayer():
                 blockList[offset] = string[charCnt]
                 offset += 1 # next index for the block
                 charCnt += 1 # next index for the new string
+                inode.size += 1 # size of inode matches number of bytes in the file
             
             NESTED_write_filesystem_map(iBlock, blockList)
             return 0
 
         else:
             return -1   
-

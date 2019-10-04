@@ -64,9 +64,10 @@ if __name__ == '__main__':
     announce("FILE FAILED CREATION..")
     fs.create('/A/B/file.txt')
     
-    announce("DIRECTORY CREATED..")
+    announce("DIRECTORIES /A/B and /A/C CREATED..")
     fs.mkdir('/A')
     fs.mkdir('/A/B')
+    fs.mkdir('/A/C')
     
     announce("FILE CREATION SUCCESSFUL..")
     fs.create('/A/B/file.txt')
@@ -78,9 +79,25 @@ if __name__ == '__main__':
     # compare the message read back from memory with the value written out
     readData = fs.read('/A/B/file.txt', 0, len(msg))
     
-    # SYMBOLIC LINK TESTS -----------------------------------------------------
+    # LINK TESTS -------------------------------------------------------
+    announce("MOVING FILE TO NEW DIRECTORY")
+    fs.mv('/A/B/file.txt', '/A/C/elif.txt')
+    fs.status()
+    readData = fs.read('/A/C/elif.txt', 0, len(msg))
+    
+    # UNLINK TESTS -----------------------------------------------------
+    
+    announce("REMOVING DIRECTORY SHOULD FAIL")
+    fs.rm('/A/C')
+    fs.status()
+    
     announce("REMOVING FILE BY UNLINKING")
-    fs.rm('/A/B/file.txt')
+    fs.rm('/A/C/elif.txt')
+    fs.status()
+    
+    announce("REMOVING NON-ROOT DIRECTORIES SHOULD BE SUCCESSFUL")
+    fs.rm('/A/C')
+    fs.rm('/A/B')
     fs.status()
     
     '''Examples:

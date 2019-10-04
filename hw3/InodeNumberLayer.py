@@ -74,6 +74,24 @@ class InodeNumberLayer():
     +-----------------------------+                  +--------------+
     '''
     def link(self, file_inode_number, hardlink_name, hardlink_parent_inode_number): 
+        
+        # get the parent inode - if inode does not exist, return an error.
+        dirInode = self.INODE_NUMBER_TO_INODE(hardlink_parent_inode_number)
+        if dirInode == -1: return -1
+        
+        # get the file inode to link to
+        targetInode = self.INODE_NUMBER_TO_INODE(file_inode_number)
+        if targetInode == -1: return -1
+        
+        # directory types cannot have hard links
+        if targetInode.type == InodeLayer.INODETYPE_DIR: return -1
+        
+        # add the directory parameters to link from directory to inode
+        dirInode.directory[hardlink_name] = file_inode_number 
+        targetInode.links += 1 # new directory is referencing the inode
+        
+        self.update_inode_table(targetInode, file_inode_number) # update the target file/directory
+        self.update_inode_table(dirInode, hardlink_parent_inode_number) # update the parent directory
         return 0
 
     '''
@@ -92,6 +110,7 @@ class InodeNumberLayer():
         # passed in, the function should return an error.
         if inode_number != dirInode.directory[filename]: return -1
         targetInode = self.INODE_NUMBER_TO_INODE(inode_number)
+        if targetInode == -1: return -1
         
         # unlinking file OR directory
         if targetInode.type == InodeLayer.INODETYPE_DIR:
@@ -100,11 +119,12 @@ class InodeNumberLayer():
             # eg. directory.links == 2. The link can only be decremented by unlinking
             # all of the file inside the directory first.
             # ---------------------------------------------------------------------
-            if targetInode.links == 2:
+            #if targetInode.links == 2:
+            if len(targetInode.directory.values()) == 0:
                 
                 # handle changes to the parent inode first
                 del dirInode.directory[filename] # delete the mapping of the {filename, inode}
-                dirInode.links -= 1 # one of the directories inside is being removed.
+                #dirInode.links -= 1 # one of the directories inside is being removed.
                 
                 # deallocate the target directory inode
                 self.__deallocate_inode_number(inode_number) # deletes target inode and empties spot in array
@@ -117,7 +137,7 @@ class InodeNumberLayer():
             
             # handle changes to the parent inode first
             del dirInode.directory[filename] # delete the mapping of the {filename, inode}
-            dirInode.links -= 1 # one of the directories inside is being removed.
+            #dirInode.links -= 1 # one of the directories inside is being removed.
             
             # if a file is being unlinked, decrement the link count of the inode
             # that it is mapped to.
@@ -197,63 +217,4 @@ class InodeNumberLayer():
         # so the inode number can be used in new_inode_number()
         del inode
         self.update_inode_table(False, inode_number)
-  
-'''
-# ============================================================================
         
-                                 UNIT TESTS
-    
-# ============================================================================   
-'''
-        
-'''
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-SUMMARY: test00_writeToInode
-    Tests whether a message can be written to an inode and read back..
-
-MODULES TESTED:
-    InodeNumberLayer
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-'''
-def test00_rwInode(memoryInterface):
-    
-    # initialize the file system
-    inodeNumberLayer = InodeNumberLayer()
-    
-    return 0
-
-'''
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-SUMMARY: 
-    main runs all the test functions listed in "testbenches" and outputs
-    the pass or fail results..
-+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-'''
-def main():
-    
-    memoryInterface = MemoryInterface.Initialize_My_FileSystem()
-    
-    testbenches = [
-        test00_rwInode
-    ]
-    
-    messages = []
-    
-    # run all tests and mark when it passed or failled
-    for test in testbenches:
-        print "\n****************** RUNNING NEXT TEST ******************\n"
-        passed = test(memoryInterface)
-        message = test.__name__ + ": "
-        if passed == 0:
-            message += "OK"
-        else:
-            message += "failed"
-        messages.append(message)
-        
-    # after all tests have been run, output the results.
-    print "\n+-----+-----+-----+-----+-----+-----+-----+-----+"
-    for message in messages: print message
-    print "+-----+-----+-----+-----+-----+-----+-----+-----+\n"
-
-if __name__ == '__main__':
-    main()
