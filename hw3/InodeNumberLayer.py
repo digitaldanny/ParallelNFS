@@ -84,9 +84,6 @@ class InodeNumberLayer():
     '''
     def unlink(self, inode_number, parent_inode_number, filename):
         
-        # remove the link to the inode in the directory.
-        # ---------------------------------------------------------------------
-        
         # get the parent inode - if inode does not exist, return an error.
         dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
         if dirInode == -1: return -1
@@ -94,22 +91,48 @@ class InodeNumberLayer():
         # if the {filename, inode}'s inode does not match the inode_number 
         # passed in, the function should return an error.
         if inode_number != dirInode.directory[filename]: return -1
-        fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
+        targetInode = self.INODE_NUMBER_TO_INODE(inode_number)
         
-        # delete the mapping of the {filename, inode}
-        del dirInode.directory[filename]
-        
-        # Decrement the inode's reference count and update the inode array.
-        # ---------------------------------------------------------------------
-        fileInode.links -= 1
-        
-        # if the inode's reference count == 0, remove all the contents of the 
-        # inode and reinitialize the blocks pionted at by the blk_numbers.
-        if fileInode.links == 0:
+        # unlinking file OR directory
+        if targetInode.type == InodeLayer.INODETYPE_DIR:
             
-        else:
-            self.update_inode_table(fileInode, inode_number)
+            # if a directory is being unlinked, make sure that it is empty first
+            # eg. directory.links == 2. The link can only be decremented by unlinking
+            # all of the file inside the directory first.
+            # ---------------------------------------------------------------------
+            if targetInode.links == 2:
+                
+                # handle changes to the parent inode first
+                del dirInode.directory[filename] # delete the mapping of the {filename, inode}
+                dirInode.links -= 1 # one of the directories inside is being removed.
+                
+                # deallocate the target directory inode
+                self.__deallocate_inode_number(inode_number) # deletes target inode and empties spot in array
+                self.update_inode_table(dirInode, parent_inode_number) # update the parent directory
         
+            else:
+                print "ERROR: No changes to the path. Directory still contains files."
+                return -1
+        else:
+            
+            # handle changes to the parent inode first
+            del dirInode.directory[filename] # delete the mapping of the {filename, inode}
+            dirInode.links -= 1 # one of the directories inside is being removed.
+            
+            # if a file is being unlinked, decrement the link count of the inode
+            # that it is mapped to.
+            # ---------------------------------------------------------------------
+            targetInode.links -= 1
+        
+            # if the inode's reference count == 0, remove all the contents of the 
+            # inode and reinitialize the blocks pionted at by the blk_numbers.
+            if targetInode.links == 0:
+                self.__deallocate_inode_number(inode_number) # deletes target inode and empties spot in array
+                self.update_inode_table(dirInode, parent_inode_number) # update the parent directory
+                return 0
+            
+        self.update_inode_table(targetInode, inode_number) # update the target file/directory
+        self.update_inode_table(dirInode, parent_inode_number) # update the parent directory
         return 0
 
     '''
@@ -159,6 +182,21 @@ class InodeNumberLayer():
         # write data to the file inode using the InodeLayer.write
         (fileInode, dataBuffer) = interface.read(fileInode, offset, length)
         return dataBuffer
+    
+    '''
+    This function deallocates all blocks in the inode of the inode number passed
+    to it. The function also deallocates the inode itself.
+    '''
+    def __deallocate_inode_number(self, inode_number):
+        inode = self.INODE_NUMBER_TO_INODE(inode_number)
+        
+        # deallocate valid block numbers in InodeLayer pointed at by the inode.blk_numbers
+        interface.free_data_block(inode, 0)
+        
+        # deallocate the inode also and push FALSE back to the inode array
+        # so the inode number can be used in new_inode_number()
+        del inode
+        self.update_inode_table(False, inode_number)
   
 '''
 # ============================================================================

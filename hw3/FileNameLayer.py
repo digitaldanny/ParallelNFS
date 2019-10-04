@@ -93,6 +93,10 @@ class FileNameLayer():
     This function decrements the inode's reference count. Additionally, if the
     reference count becomes equal to 0, the inode's blk_number contents are 
     deallocated and the inode is reset.
+    
+    ~ Decrement target inode's reference count.
+    ~ If reference count == 0 && filetype == file, delete.
+    ~ If 
     '''
     def unlink(self, path, inode_number_cwd):
         if path == "": 
