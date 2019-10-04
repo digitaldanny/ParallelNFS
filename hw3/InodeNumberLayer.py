@@ -212,9 +212,10 @@ class InodeNumberLayer():
         
         # deallocate valid block numbers in InodeLayer pointed at by the inode.blk_numbers
         interface.free_data_block(inode, 0)
+        del inode
         
         # deallocate the inode also and push FALSE back to the inode array
         # so the inode number can be used in new_inode_number()
-        del inode
+        #del inode
         self.update_inode_table(False, inode_number)
         

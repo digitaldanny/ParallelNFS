@@ -59,7 +59,7 @@ if __name__ == '__main__':
     #fs.status()
     
     # FILE WRITE/READ TEST ----------------------------------------------------
-    msg = "Hello world!"
+    msg = "Hello world! "*50
     
     announce("FILE FAILED CREATION..")
     fs.create('/A/B/file.txt')
@@ -98,6 +98,7 @@ if __name__ == '__main__':
     announce("REMOVING NON-ROOT DIRECTORIES SHOULD BE SUCCESSFUL")
     fs.rm('/A/C')
     fs.rm('/A/B')
+    fs.rm('/A')
     fs.status()
     
     '''Examples:
