@@ -4,6 +4,10 @@ THIS MODULE IS RESPONSIBLE FOR PROVIDING ACTUAL BLOCK NUMBERS SAVED IN INODE ARR
 '''
 import datetime, config, BlockLayer, InodeOps, MemoryInterface
 
+INODETYPE_FILE  = 0
+INODETYPE_DIR   = 1
+INODETYPE_SYM   = 2
+
 #HANDLE OF BLOCK LAYER
 interface = BlockLayer.BlockLayer()
 
@@ -43,7 +47,7 @@ class InodeLayer():
     def write(self, inode, offset, data):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
         
         inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
 
@@ -67,7 +71,7 @@ class InodeLayer():
     def read(self, inode, offset, length):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
         
         # find the offset's block number
         blockOffset = offset / config.BLOCK_SIZE
@@ -107,9 +111,9 @@ class InodeLayer():
     def copy(self, inode):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
         
-        newInode = self.new_inode(config.INODETYPE_FILE)
+        newInode = self.new_inode(INODETYPE_FILE)
         self.free_data_block(newInode, 0) # clear all data located in the new inode
         
         # for all valid blocks in the original inode, get a valid data block,

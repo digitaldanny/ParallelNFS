@@ -43,15 +43,45 @@ class FileSystemOperations():
     def status(self):
         print(MemoryInterface.status())
 
+def printDivider():
+    print("+====="*20 + "+")
 
+def announce(msg):
+    printDivider()
+    print(msg)
+    printDivider()
 
 if __name__ == '__main__':
     #DO NOT MODIFY THIS
     Initialize_My_FileSystem()
-    my_object = FileSystemOperations()
-    my_object.status()
-    #YOU MAY WRITE YOUR CODE AFTER HERE
-
+    fs = FileSystemOperations()
+    #announce("INIT MEMORY")
+    #fs.status()
+    
+    # FILE WRITE/READ TEST ----------------------------------------------------
+    msg = "Hello world!"
+    
+    announce("FILE FAILED CREATION..")
+    fs.create('/A/B/file.txt')
+    
+    announce("DIRECTORY CREATED..")
+    fs.mkdir('/A')
+    fs.mkdir('/A/B')
+    
+    announce("FILE CREATION SUCCESSFUL..")
+    fs.create('/A/B/file.txt')
+    
+    announce("WRITE COMPLETE..")
+    fs.write('/A/B/file.txt', msg, offset=0)
+    fs.status()
+    
+    # compare the message read back from memory with the value written out
+    readData = fs.read('/A/B/file.txt', 0, len(msg))
+    
+    # SYMBOLIC LINK TESTS -----------------------------------------------------
+    announce("REMOVING FILE BY UNLINKING")
+    fs.rm('/A/B/file.txt')
+    fs.status()
     
     '''Examples:
     my_object.mkdir("/A")

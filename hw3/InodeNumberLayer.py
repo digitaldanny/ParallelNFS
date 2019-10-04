@@ -10,70 +10,212 @@ interface = InodeLayer.InodeLayer()
 
 class InodeNumberLayer():
 
-	#PLEASE DO NOT MODIFY
-	#ASKS FOR INODE FROM INODE NUMBER FROM MemoryInterface.(BLOCK LAYER HAS NOTHING TO DO WITH INODES SO SEPERTAE HANDLE)
-	def INODE_NUMBER_TO_INODE(self, inode_number):
-		array_inode = MemoryInterface.inode_number_to_inode(inode_number)
-		inode = InodeOps.InodeOperations().convert_array_to_table(array_inode)
-		if inode: inode.time_accessed = datetime.datetime.now()   #TIME OF ACCESS
-		return inode
+    #PLEASE DO NOT MODIFY
+    #ASKS FOR INODE FROM INODE NUMBER FROM MemoryInterface.(BLOCK LAYER HAS NOTHING TO DO WITH INODES SO SEPERTAE HANDLE)
+    def INODE_NUMBER_TO_INODE(self, inode_number):
+        array_inode = MemoryInterface.inode_number_to_inode(inode_number)
+        inode = InodeOps.InodeOperations().convert_array_to_table(array_inode)
+        if inode: inode.time_accessed = datetime.datetime.now()   #TIME OF ACCESS
+        return inode
 
 
-	#PLEASE DO NOT MODIFY
-	#RETURNS DATA BLOCK FROM INODE NUMBER
-	def INODE_NUMBER_TO_BLOCK(self, inode_number, offset, length):
-		inode = self.INODE_NUMBER_TO_INODE(inode_number)
-		if not inode:
-			print("Error InodeNumberLayer: Wrong Inode Number! \n")
-			return -1
-		return interface.read(inode, offset, length)
+    #PLEASE DO NOT MODIFY
+    #RETURNS DATA BLOCK FROM INODE NUMBER
+    def INODE_NUMBER_TO_BLOCK(self, inode_number, offset, length):
+        inode = self.INODE_NUMBER_TO_INODE(inode_number)
+        if not inode:
+            print("Error InodeNumberLayer: Wrong Inode Number! \n")
+            return -1
+        return interface.read(inode, offset, length)
 
 
-	#PLEASE DO NOT MODIFY
-	#UPDATES THE INODE TO THE INODE TABLE
-	def update_inode_table(self, table_inode, inode_number):
-		if table_inode: table_inode.time_modified = datetime.datetime.now()  #TIME OF MODIFICATION 
-		array_inode = InodeOps.InodeOperations().convert_table_to_array(table_inode)
-		MemoryInterface.update_inode_table(array_inode, inode_number)
+    #PLEASE DO NOT MODIFY
+    #UPDATES THE INODE TO THE INODE TABLE
+    def update_inode_table(self, table_inode, inode_number):
+        if table_inode: table_inode.time_modified = datetime.datetime.now()  #TIME OF MODIFICATION 
+        array_inode = InodeOps.InodeOperations().convert_table_to_array(table_inode)
+        MemoryInterface.update_inode_table(array_inode, inode_number)
 
 
-	#PLEASE DO NOT MODIFY
-	#FINDS NEW INODE INODE NUMBER FROM FILESYSTEM
-	def new_inode_number(self, type, parent_inode_number, name):
-		if parent_inode_number != -1:
-			parent_inode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
-			if not parent_inode:
-				print("Error InodeNumberLayer: Incorrect Parent Inode")
-				return -1
-			entry_size = config.MAX_FILE_NAME_SIZE + len(str(config.MAX_NUM_INODES))
-			max_entries = (config.INODE_SIZE - 79 ) / entry_size
-			if len(parent_inode.directory) == max_entries:
-				print("Error InodeNumberLayer: Maximum inodes allowed per directory reached!")
-				return -1
-		for i in range(0, config.MAX_NUM_INODES):
-			if self.INODE_NUMBER_TO_INODE(i) == False: #FALSE INDICTES UNOCCUPIED INODE ENTRY HENCE, FREEUMBER
-				inode = interface.new_inode(type)
-				inode.name = name
-				self.update_inode_table(inode, i)
-				return i
-		print("Error InodeNumberLayer: All inode Numbers are occupied!\n")
+    #PLEASE DO NOT MODIFY
+    #FINDS NEW INODE INODE NUMBER FROM FILESYSTEM
+    def new_inode_number(self, type, parent_inode_number, name):
+        if parent_inode_number != -1:
+            parent_inode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
+            if not parent_inode:
+                print("Error InodeNumberLayer: Incorrect Parent Inode")
+                return -1
+            entry_size = config.MAX_FILE_NAME_SIZE + len(str(config.MAX_NUM_INODES))
+            max_entries = (config.INODE_SIZE - 79 ) / entry_size
+            if len(parent_inode.directory) == max_entries:
+                print("Error InodeNumberLayer: Maximum inodes allowed per directory reached!")
+                return -1
+        for i in range(0, config.MAX_NUM_INODES):
+            if self.INODE_NUMBER_TO_INODE(i) == False: #FALSE INDICTES UNOCCUPIED INODE ENTRY HENCE, FREEUMBER
+                inode = interface.new_inode(type)
+                inode.name = name
+                self.update_inode_table(inode, i)
+                return i
+        print("Error InodeNumberLayer: All inode Numbers are occupied!\n")
 
+    '''
+    SUMMARY: link
+    This function creates a hard link from hardlink_parent/hardlink_name to 
+    the file's inode number and increments the filename_inode's reference count.
+    
+    PARENT INODE (inode 1)                           FILE INODE (inode 2)
+    +-----------+-----------------+                  +--------+-----+
+    | link_name |  file_inode_num |                  |    blk_nums  |
+    | 'f'       |       2         | ---------------> | 10, 11, 12   |
+    |           |                 |                  |              |
+    |           |                 |                  |              |
+    +-----------------------------+                  +--------------+ 
+    |          type = dir         |                  | type = file  |
+    +-----------------------------+                  +--------------+
+    '''
+    def link(self, file_inode_number, hardlink_name, hardlink_parent_inode_number): 
+        return 0
 
-	#LINKS THE INODE
-	def link(self, file_inode_number, hardlink_name, hardlink_parent_inode_number):
-		'''WRITE YOUR CODE HERE'''
+    '''
+    SUMMARY: unlink
+    This function removes a link in the file system for an inode number.
+    If the last link is removed from the inode number, all blocks in the blk_numbers
+    are deallocated + the inode is freed.
+    '''
+    def unlink(self, inode_number, parent_inode_number, filename):
+        
+        # remove the link to the inode in the directory.
+        # ---------------------------------------------------------------------
+        
+        # get the parent inode - if inode does not exist, return an error.
+        dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
+        if dirInode == -1: return -1
+        
+        # if the {filename, inode}'s inode does not match the inode_number 
+        # passed in, the function should return an error.
+        if inode_number != dirInode.directory[filename]: return -1
+        fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
+        
+        # delete the mapping of the {filename, inode}
+        del dirInode.directory[filename]
+        
+        # Decrement the inode's reference count and update the inode array.
+        # ---------------------------------------------------------------------
+        fileInode.links -= 1
+        
+        # if the inode's reference count == 0, remove all the contents of the 
+        # inode and reinitialize the blocks pionted at by the blk_numbers.
+        if fileInode.links == 0:
+            
+        else:
+            self.update_inode_table(fileInode, inode_number)
+        
+        return 0
 
-
-	#REMOVES THE INODE ENTRY FROM INODE TABLE
-	def unlink(self, inode_number, parent_inode_number, filename):
-		'''WRITE YOUR CODE HERE'''
-
-
-	#IMPLEMENTS WRITE FUNCTIONALITY
-	def write(self, inode_number, offset, data, parent_inode_number):
-		'''WRITE YOUR CODE HERE'''
+    '''
+    SUMMARY: write
+    This function uses the InodeLayer write function to write data to an inode's
+    block numbers in a specific directory.
+    
+    Ex. parent_inode_number/inode_number offset = 10, data = "Hello world"
+    '''
+    def write(self, inode_number, offset, data, parent_inode_number):
+        
+        # get the parent inode - if inode does not exist, return an error.
+        dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
+        if dirInode == -1: return -1
+        
+        # search for the file inode inside the parent (directory) inode as a 
+        # value of the {filename, inode} dictionary.
+        if inode_number not in dirInode.directory.values(): return -1
+        fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
+        
+        # write data to the file inode using the InodeLayer.write
+        fileInode = interface.write(fileInode, offset, data)
+        if fileInode == -1: return -1
+        
+        # update the inodeArray with the new file inode
+        self.update_inode_table(fileInode, inode_number)
+        return 0
 		
 
-	#IMPLEMENTS READ FUNCTIONALITY
-	def read(self, inode_number, offset, length, parent_inode_number):
-		'''WRITE YOUR CODE HERE'''
+    '''
+    SUMMARY: read
+    This function uses the InodeLayer read function to read data to an inode's
+    block numbers in a specific directory. This function gets inode's from 
+    the inodeArray from the input inodeNumbers.
+    '''
+    def read(self, inode_number, offset, length, parent_inode_number):
+        
+        # get the parent inode - if inode does not exist, return an error.
+        dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
+        if dirInode == -1: return -1
+        
+        # search for the file inode inside the parent (directory) inode as a 
+        # value of the {filename, inode} dictionary.
+        if inode_number not in dirInode.directory.values(): return -1
+        fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
+        
+        # write data to the file inode using the InodeLayer.write
+        (fileInode, dataBuffer) = interface.read(fileInode, offset, length)
+        return dataBuffer
+  
+'''
+# ============================================================================
+        
+                                 UNIT TESTS
+    
+# ============================================================================   
+'''
+        
+'''
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+SUMMARY: test00_writeToInode
+    Tests whether a message can be written to an inode and read back..
+
+MODULES TESTED:
+    InodeNumberLayer
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+'''
+def test00_rwInode(memoryInterface):
+    
+    # initialize the file system
+    inodeNumberLayer = InodeNumberLayer()
+    
+    return 0
+
+'''
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+SUMMARY: 
+    main runs all the test functions listed in "testbenches" and outputs
+    the pass or fail results..
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+'''
+def main():
+    
+    memoryInterface = MemoryInterface.Initialize_My_FileSystem()
+    
+    testbenches = [
+        test00_rwInode
+    ]
+    
+    messages = []
+    
+    # run all tests and mark when it passed or failled
+    for test in testbenches:
+        print "\n****************** RUNNING NEXT TEST ******************\n"
+        passed = test(memoryInterface)
+        message = test.__name__ + ": "
+        if passed == 0:
+            message += "OK"
+        else:
+            message += "failed"
+        messages.append(message)
+        
+    # after all tests have been run, output the results.
+    print "\n+-----+-----+-----+-----+-----+-----+-----+-----+"
+    for message in messages: print message
+    print "+-----+-----+-----+-----+-----+-----+-----+-----+\n"
+
+if __name__ == '__main__':
+    main()
