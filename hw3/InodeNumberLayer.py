@@ -92,7 +92,7 @@ class InodeNumberLayer():
         
         self.update_inode_table(targetInode, file_inode_number) # update the target file/directory
         self.update_inode_table(dirInode, hardlink_parent_inode_number) # update the parent directory
-        return 0
+        return True
 
     '''
     SUMMARY: unlink
@@ -149,11 +149,11 @@ class InodeNumberLayer():
             if targetInode.links == 0:
                 self.__deallocate_inode_number(inode_number) # deletes target inode and empties spot in array
                 self.update_inode_table(dirInode, parent_inode_number) # update the parent directory
-                return 0
+                return True
             
         self.update_inode_table(targetInode, inode_number) # update the target file/directory
         self.update_inode_table(dirInode, parent_inode_number) # update the parent directory
-        return 0
+        return True
 
     '''
     SUMMARY: write
@@ -179,7 +179,7 @@ class InodeNumberLayer():
         
         # update the inodeArray with the new file inode
         self.update_inode_table(fileInode, inode_number)
-        return 0
+        return True
 		
 
     '''

@@ -74,16 +74,25 @@ if __name__ == '__main__':
     
     announce("WRITE COMPLETE..")
     fs.write('/A/B/file.txt', msg, offset=0)
-    fs.status()
+    readData = fs.read('/A/B/file.txt', 0, 12)
     
-    # compare the message read back from memory with the value written out
-    readData = fs.read('/A/B/file.txt', 0, len(msg))
+    #fs.status()
+    fs.write('/A/B/file.txt', 'i', offset=1)
+    readData = fs.read('/A/B/file.txt', 0, 12)
+    
+    fs.write('/A/B/file.txt', ' success', offset=2)
+    readData = fs.read('/A/B/file.txt', 0, 12)
+    
+    fs.write('/A/B/file.txt', ' fail', offset=11)
+    readData = fs.read('/A/B/file.txt', 0, 12)
+    
+    fs.status()
     
     # LINK TESTS -------------------------------------------------------
     announce("MOVING FILE TO NEW DIRECTORY")
     fs.mv('/A/B/file.txt', '/A/C/elif.txt')
     fs.status()
-    readData = fs.read('/A/C/elif.txt', 0, len(msg))
+    readData = fs.read('/A/C/elif.txt', 0, 100)
     
     # UNLINK TESTS -----------------------------------------------------
     

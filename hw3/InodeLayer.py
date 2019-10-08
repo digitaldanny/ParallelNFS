@@ -189,13 +189,15 @@ class InodeLayer():
                 return ['\0' for i in range(config.BLOCK_SIZE)]
        
         # _WRITE_TO_OFFSET BEGIN ----------------------------------------------
+        self.free_data_block(inode, offset)
+        inode.size = offset
         
         # Locate the index of the block number in the inode.block_nums referenced by the input offset.
         iBlock = 0 # block index for the self.map list
         while offset >= config.BLOCK_SIZE:
             offset -= config.BLOCK_SIZE
             iBlock += 1
-
+            
         # Read the current data stored at the block.
         blockList = NESTED_get_init_block_list(iBlock)
 
@@ -221,6 +223,9 @@ class InodeLayer():
                 charCnt += 1 # next index for the new string
                 inode.size += 1 # size of inode matches number of bytes in the file
             
+            # if the block contains data longer than the input string, remove the extra characters
+            if offset < config.BLOCK_SIZE: 
+                blockList[offset:] = '\0'
             NESTED_write_filesystem_map(iBlock, blockList)
             return 0
 
