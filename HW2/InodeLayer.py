@@ -303,9 +303,10 @@ def test02_deepCopy():
     # the original inode
     for i in range(0,4):
         (newInode, readData) = InodeLay.read(newInode, i*512, len(messages[i]))
+        print "\nORIGINAL: " + messages[i]
+        print "COPIED: " + readData
+            
         if readData != messages[i]:
-            print "ORIGINAL: " + messages[i]
-            print "COPIED: " + readData
             return -1
     
     InodeLay.free_data_block(inode, 0) # reset the memory before goinig to the next test
@@ -392,13 +393,13 @@ if __name__ == '__main__':
 
     # names of all tests being run
     testbenches = [
-         test06_allBlockRW,
-         test00_createAccessModifyTime,
-         test01_rwTwoBlocks,
+         #test06_allBlockRW,
+         #test00_createAccessModifyTime,
+         #test01_rwTwoBlocks,
          test02_deepCopy,
-         test03_dirTest,
-         test04_fileSizeError,
-         test05_trucateFileSize
+         #test03_dirTest,
+         #test04_fileSizeError,
+         #test05_trucateFileSize
     ]
     
     messages = []
