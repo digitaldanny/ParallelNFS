@@ -39,7 +39,7 @@ class client_stub():
             deserialized = pickle.loads(rx)
             return deserialized
         except Exception:
-            print "ERROR (status): Server failure.."
+            print "ERROR (get_valid_data_block): Server failure.."
             return -1 
     
     def free_data_block(self, block_number):
@@ -54,7 +54,7 @@ class client_stub():
             deserialized = pickle.loads(rx)
             return deserialized
         except Exception:
-            print "ERROR (status): Server failure.."
+            print "ERROR (update_data_block): Server failure.."
             return -1 
     
     def update_inode_table(self, inode, inode_number):
@@ -65,7 +65,7 @@ class client_stub():
             deserialized = pickle.loads(rx)
             return deserialized
         except Exception:
-            print "ERROR (status): Server failure.."
+            print "ERROR (update_inode_table): Server failure.."
             return -1 
     
     
