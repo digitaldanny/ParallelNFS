@@ -70,6 +70,7 @@ def status():
 	return retVal
 
 def corruptData():
+        state = False
 	retVal = 'Data Corrupted in server ' + str(portNumber)
 	retVal = pickle.dumps((retVal,state))
 	return retVal

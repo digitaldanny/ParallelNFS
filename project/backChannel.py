@@ -1,16 +1,25 @@
+'''
+SUMMARY: backChannel.py
+    This script instantiates n = 4->16 servers and allows the user to choose 
+    which server fails.
+
+EXAMPLE:
+    python backChannel.py num_servers
+'''
 import xmlrpclib, config, pickle, os, sys, subprocess, time
 
-#Back Channel
 proxy = []
-#create servers
-# number of servers
 num_servers   	= sys.argv[1]
 num_servers   	= int(num_servers)
-print(num_servers)
+print("Number of servers: " + str(num_servers))
 portNum 		= 8000
 
+'''
+Instantiate num_servers servers in GNOME environment. Each new server will be 
+operating on portNum + i. This is how the file system will be able to specify 
+which server it will communicate with.
+'''
 for i in range(num_servers) :
-	# append to the list of client proxies
 	print('running server #' + str(portNum+i))
 	proxy.append(xmlrpclib.ServerProxy("http://localhost:" + str(portNum + i) + "/"))
 	os.system('gnome-terminal -e \"python server.py ' + str(portNum + i) + '\"')

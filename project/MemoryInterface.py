@@ -11,7 +11,7 @@ client_stub = client_stub.client_stub()
 def Initialize_My_FileSystem():
     print("File System Initializing......")
     time.sleep(2)
-    state = client_stub.Initialize()
+    client_stub.Initialize()
     print("File System Initialized!")
 
 

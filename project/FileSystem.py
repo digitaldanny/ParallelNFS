@@ -53,7 +53,7 @@ def announce(msg):
 
 def endit():
     print "Ending program..."
-    quit()
+    #quit()
 
 
 if __name__ == '__main__':

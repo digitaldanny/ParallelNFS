@@ -1,4 +1,4 @@
-import MemoryInterface, AbsolutePathNameLayer
+import time, MemoryInterface, AbsolutePathNameLayer
 
 def Initialize_My_FileSystem():
     MemoryInterface.Initialize_My_FileSystem()
@@ -52,6 +52,9 @@ def announce(msg):
     printDivider()
 
 if __name__ == '__main__':
+    
+    start = time.time()
+
     #DO NOT MODIFY THIS
     Initialize_My_FileSystem()
     fs = FileSystemOperations()
@@ -88,6 +91,7 @@ if __name__ == '__main__':
     
     fs.status()
     
+    '''
     # LINK TESTS -------------------------------------------------------
     announce("MOVING FILE TO NEW DIRECTORY")
     fs.mv('/A/B/file.txt', '/A/C/elif.txt')
@@ -110,6 +114,26 @@ if __name__ == '__main__':
     fs.rm('/A')
     fs.status()
     
+    fs.mkdir('/a')
+    fs.mkdir('/b')
+    fs.create('/a/1.txt')
+    fs.write('/a/1.txt', 'dummy data', offset=0)
+    fs.status()
+    fs.read('/a/1.txt', 0, 10)
+    
+    fs.mv('/a/1.txt', '/b/1.txt')
+    fs.write('/b/1.txt', 'legal', 0)
+    fs.status()
+    fs.read('/b/1.txt', 0, 10)
+    
+    fs.rm('/b/1.txt')
+    fs.rm('/b')
+    fs.status()
+    '''
+    
+    end = time.time()
+    print "LPC TESTBENCH TIME: " + str(end - start)
+
     '''Examples:
     my_object.mkdir("/A")
     my_object.status()
