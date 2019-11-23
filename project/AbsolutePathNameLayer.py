@@ -34,6 +34,7 @@ class AbsolutePathNameLayer():
 	#IMPLEMENTS READ 
 	def read(self, path, offset, length):
 		inode_number_of_parent = self.GENERAL_PATH_TO_HOME_INODE_NUMBER(path)
+		#print("JAKE-APNL-READ: inode_number_of_home: ", inode_number_of_parent)
 		if inode_number_of_parent == -1: 
 			print("Error AbsolutePathLayer: Wrong Path Given!\n")
 			return -1

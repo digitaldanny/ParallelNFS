@@ -2,7 +2,7 @@
 THIS MODULE IS INODE LAYER OF THE FILE SYSTEM. IT INCLUDES THE INODE DEFINITION DECLARATION AND GLOBAL HANDLE OF BLOCK LAYER OF API.
 THIS MODULE IS RESPONSIBLE FOR PROVIDING ACTUAL BLOCK NUMBERS SAVED IN INODE ARRAY OF BLOCK NUMBERS TO FETCH DATA FROM BLOCK LAYER.
 '''
-import datetime, config, BlockLayer, InodeOps, MemoryInterface
+import datetime, config, BlockLayer, InodeOps, MemoryInterface, math
 
 INODETYPE_FILE  = 0
 INODETYPE_DIR   = 1
@@ -35,8 +35,9 @@ class InodeLayer():
     #FLUSHES ALL THE BLOCKS OF INODES FROM GIVEN INDEX OF MAPPING ARRAY  
     def free_data_block(self, inode, index):
         for i in range(index, len(inode.blk_numbers)):
-            interface.free_data_block(inode.blk_numbers[i])
-            inode.blk_numbers[i] = -1
+	    if(inode.blk_numbers[i] != -1):
+            	interface.free_data_block(inode.blk_numbers[i])
+            	inode.blk_numbers[i] = -1
 
 
     '''
@@ -169,7 +170,8 @@ class InodeLayer():
             # if the string is being replaced, update the blockNumber and deallocate old block. 
             # Otherwise, add the blockNumber to the end of the file.
             if nDeallocateIdx < len(inode.blk_numbers):
-                interface.free_data_block( inode.blk_numbers[nDeallocateIdx] ) # deallocate old block
+		if(inode.blk_numbers[nDeallocateIdx] != -1): 
+                    interface.free_data_block( inode.blk_numbers[nDeallocateIdx] ) # deallocate old block
                 nBlockNum = interface.get_valid_data_block() # allocate new block
                 interface.update_data_block(nBlockNum, ''.join(nDataList)) # write to the new block
                 inode.blk_numbers[nDeallocateIdx] = nBlockNum # replace file block numbers
@@ -189,7 +191,8 @@ class InodeLayer():
                 return ['\0' for i in range(config.BLOCK_SIZE)]
        
         # _WRITE_TO_OFFSET BEGIN ----------------------------------------------
-        self.free_data_block(inode, offset)
+        self.free_data_block(inode, (int)(math.ceil(offset/config.BLOCK_SIZE)))
+	# print("offset",offset)
         inode.size = offset
         
         # Locate the index of the block number in the inode.block_nums referenced by the input offset.

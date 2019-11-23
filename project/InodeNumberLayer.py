@@ -14,9 +14,9 @@ class InodeNumberLayer():
     #ASKS FOR INODE FROM INODE NUMBER FROM MemoryInterface.(BLOCK LAYER HAS NOTHING TO DO WITH INODES SO SEPERTAE HANDLE)
     def INODE_NUMBER_TO_INODE(self, inode_number):
         array_inode = MemoryInterface.inode_number_to_inode(inode_number)
-	print("INTI: array_inode", array_inode)
+	#print("INTI: array_inode", array_inode)
         inode = InodeOps.InodeOperations().convert_array_to_table(array_inode)
-	print(inode)
+	#print(inode)
         if inode: inode.time_accessed = datetime.datetime.now()   #TIME OF ACCESS
         return inode
 
@@ -194,10 +194,12 @@ class InodeNumberLayer():
         
         # get the parent inode - if inode does not exist, return an error.
         dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
+	print("dirInode",dirInode)
         if dirInode == -1: return -1
         
         # search for the file inode inside the parent (directory) inode as a 
         # value of the {filename, inode} dictionary.
+	print("DIRINIDE",dirInode.directory.values(),inode_number)
         if inode_number not in dirInode.directory.values(): return -1
         fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
         
