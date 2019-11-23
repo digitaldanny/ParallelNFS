@@ -1,21 +1,26 @@
-import time, datetime, config, BlockLayer, InodeOps, MemoryInterface
+'''
+THIS MODULE IS INODE LAYER OF THE FILE SYSTEM. IT INCLUDES THE INODE DEFINITION DECLARATION AND GLOBAL HANDLE OF BLOCK LAYER OF API.
+THIS MODULE IS RESPONSIBLE FOR PROVIDING ACTUAL BLOCK NUMBERS SAVED IN INODE ARRAY OF BLOCK NUMBERS TO FETCH DATA FROM BLOCK LAYER.
+'''
+import datetime, config, BlockLayer, InodeOps, MemoryInterface
 
+INODETYPE_FILE  = 0
+INODETYPE_DIR   = 1
+INODETYPE_SYM   = 2
 
-MemoryInterface.Initialize_My_FileSystem()
+MemoryInterface.Initialize_My_FileSystem() # ADDED FOR TESTING HW2
 #HANDLE OF BLOCK LAYER
 interface = BlockLayer.BlockLayer()
 
 class InodeLayer():
 
-    #PLEASE DO NOT MODIFY THIS
-    #RETURNS ACTUAL BLOCK NUMBER FROM RESPECTIVE MAPPING  
+    #RETURNS BLOCK NUMBER FROM RESPECTIVE INODE DIRECTORY
     def INDEX_TO_BLOCK_NUMBER(self, inode, index):
         if index == len(inode.blk_numbers): return -1
         return inode.blk_numbers[index]
 
 
-    #PLEASE DO NOT MODIFY THIS
-    #RETURNS BLOCK DATA FROM INODE and OFFSET
+    #RETURNS BLOCK DATA FROM INODE
     def INODE_TO_BLOCK(self, inode, offset):
         index = offset / config.BLOCK_SIZE
         block_number = self.INDEX_TO_BLOCK_NUMBER(inode, index)
@@ -23,18 +28,17 @@ class InodeLayer():
         else: return interface.BLOCK_NUMBER_TO_DATA_BLOCK(block_number)
 
 
-    #PLEASE DO NOT MODIFY THIS
     #MAKES NEW INODE OBJECT
     def new_inode(self, type):
         return InodeOps.Table_Inode(type)
 
 
-    #PLEASE DO NOT MODIFY THIS
     #FLUSHES ALL THE BLOCKS OF INODES FROM GIVEN INDEX OF MAPPING ARRAY  
     def free_data_block(self, inode, index):
         for i in range(index, len(inode.blk_numbers)):
             interface.free_data_block(inode.blk_numbers[i])
             inode.blk_numbers[i] = -1
+
 
     '''
     SUMMARY: write
@@ -44,7 +48,10 @@ class InodeLayer():
     def write(self, inode, offset, data):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
+        
+        # file size error handler
+        if offset > inode.size or offset < 0: return -1
         
         inode.time_accessed = str(datetime.datetime.now())[:19] # change time accessed
 
@@ -68,7 +75,10 @@ class InodeLayer():
     def read(self, inode, offset, length):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
+        
+        # file size error handler
+        if offset > inode.size or offset < 0: return -1
         
         # find the offset's block number
         blockOffset = offset / config.BLOCK_SIZE
@@ -108,9 +118,9 @@ class InodeLayer():
     def copy(self, inode):
         
         # return an error if the input inode is not a file type.
-        if inode.type != config.INODETYPE_FILE: return -1
+        if inode.type != INODETYPE_FILE: return -1
         
-        newInode = self.new_inode(config.INODETYPE_FILE)
+        newInode = self.new_inode(INODETYPE_FILE)
         self.free_data_block(newInode, 0) # clear all data located in the new inode
         
         # for all valid blocks in the original inode, get a valid data block,
@@ -129,8 +139,8 @@ class InodeLayer():
                 #interface.update_data_block(newBlockNum, dataToCopy) # write the contents to a new block number
                 newInode.blk_numbers[i] = newBlockNum
                 
-                inode, dataToCopy = self.read(inode, i*512, 512) # read original contents/modify time
-                self.write(newInode, i*512, dataToCopy) # write to copy/modify time
+                inode, dataToCopy = self.read(inode, i*config.BLOCK_SIZE, config.BLOCK_SIZE) # read original contents/modify time
+                self.write(newInode, i*config.BLOCK_SIZE, dataToCopy) # write to copy/modify time
                 
         return newInode
 
@@ -180,13 +190,15 @@ class InodeLayer():
                 return ['\0' for i in range(config.BLOCK_SIZE)]
        
         # _WRITE_TO_OFFSET BEGIN ----------------------------------------------
+        self.free_data_block(inode, offset)
+        inode.size = offset
         
         # Locate the index of the block number in the inode.block_nums referenced by the input offset.
         iBlock = 0 # block index for the self.map list
         while offset >= config.BLOCK_SIZE:
             offset -= config.BLOCK_SIZE
             iBlock += 1
-
+            
         # Read the current data stored at the block.
         blockList = NESTED_get_init_block_list(iBlock)
 
@@ -210,12 +222,17 @@ class InodeLayer():
                 blockList[offset] = string[charCnt]
                 offset += 1 # next index for the block
                 charCnt += 1 # next index for the new string
+                inode.size += 1 # size of inode matches number of bytes in the file
             
+            # if the block contains data longer than the input string, remove the extra characters
+            if offset < config.BLOCK_SIZE: 
+                blockList[offset:] = '\0'
             NESTED_write_filesystem_map(iBlock, blockList)
             return 0
 
         else:
-            return -1   
+            return -1 
+        
 
 '''
 SUMMARY: test00_createAccessModifyTime
@@ -338,17 +355,24 @@ the initial offset is at a block greater than the maximum INODE_SIZE.
 '''
 def test04_fileSizeError():
     InodeLay = InodeLayer()
-    inode = InodeLay.new_inode(config.INODETYPE_FILE)
+    inodeFails = InodeLay.new_inode(config.INODETYPE_FILE)
+    inodeWorks = InodeLay.new_inode(config.INODETYPE_FILE)
     
-    # try writing too much data to the file
-    inode = InodeLay.write(inode, 512*len(inode.blk_numbers) + 10, "None of this string should be written")
+    # this write should fail
+    print "====INODE FAIL TEST===="
+    inodeFails = InodeLay.write(inodeFails, 1, "None of this string should be written")
+    InodeLay.status()
+    
+    # this write should pass
+    print "====INODE PASS TEST===="
+    inodeWorks = InodeLay.write(inodeWorks, 0, "This string SHOULD write")
     InodeLay.status()
 
-    if inode == -1:
-        print "No data was written"
+    if inodeFails == -1 and inodeWorks != -1:
+        print "Test passed."
         return 0
     else:
-        print "ERROR: Data was written"
+        print "ERROR: Data was written."
         return -1
     
 '''
@@ -396,9 +420,9 @@ if __name__ == '__main__':
          #test06_allBlockRW,
          #test00_createAccessModifyTime,
          #test01_rwTwoBlocks,
-         test02_deepCopy,
+         #test02_deepCopy,
          #test03_dirTest,
-         #test04_fileSizeError,
+         test04_fileSizeError,
          #test05_trucateFileSize
     ]
     
