@@ -21,7 +21,7 @@ class FileNameLayer():
             print("Error FileNameLayer: Invalid Directory!")
             return -1
         if childname in inode.directory: return inode.directory[childname]
-        print("Error FileNameLayer: Lookup Failure!")
+        print("Error FileNameLayer: Lookup Failure-notinparent!")
         return -1
 
     #PLEASE DO NOT MODIFY
@@ -41,6 +41,8 @@ class FileNameLayer():
             interface.new_inode_number(type, inode_number_cwd, "root")
             return True
         parent_inode_number = self.LOOKUP(path, inode_number_cwd)
+	#fails when parent inode number is -1. Meaning Lookup Failed
+	print(parent_inode_number)
         parent_inode = interface.INODE_NUMBER_TO_INODE(parent_inode_number) 
         childname = path.split('/')[-1]
         if not parent_inode: return -1

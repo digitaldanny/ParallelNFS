@@ -25,7 +25,7 @@ for i in range(num_servers) :
 	os.system('gnome-terminal -e \"python server.py ' + str(portNum + i) + '\"')
 	time.sleep(1)
 
-while True:
+while False:
 	serverNum = int(raw_input("Select Server to Corrupt..."))
 	try :
 		retVal =  proxy[serverNum].corruptData()
