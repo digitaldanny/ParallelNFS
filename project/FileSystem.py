@@ -1,5 +1,29 @@
 import time, MemoryInterface, AbsolutePathNameLayer
 
+'''
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+CONFIGURATIONS
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+mode -  0: command line mode for final project
+        1: testbench mode
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+'''
+mode    = 0
+
+'''
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+CONSTANTS
++-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+'''
+EXIT    = 'exit'
+MKDIR   = 'mkdir'
+CREATE  = 'create'
+MV      = 'mv'
+READ    = 'read'
+WRITE   = 'write'
+STATUS  = 'status'
+RM      = 'rm'
+
 def Initialize_My_FileSystem():
     MemoryInterface.Initialize_My_FileSystem()
     AbsolutePathNameLayer.AbsolutePathNameLayer().new_entry('/', 1)
@@ -54,19 +78,83 @@ def announce(msg):
 def endit():
     print "Ending program..."
     #quit()
-
-
-if __name__ == '__main__':
-    start = time.time()
     
+'''
+SUMMARY: main
+This function runs the client interactive window for transmitting
+data to the servers.
+'''
+def main():
     
-    #DO NOT MODIFY THIS
     Initialize_My_FileSystem()
     fs = FileSystemOperations()
-    #announce("INIT MEMORY")
-    fs.status()
     
-    # FILE WRITE/READ TEST ----------------------------------------------------
+    while True:        
+        try:
+            # split the user's response string by delimiters (white space)
+            response = raw_input('$ ').split()
+            cmd = response[0]
+        
+            if cmd == EXIT:
+                # EXIT: Terminate program.
+                break
+            
+            elif cmd == MKDIR:
+                # MKDIR: Create a new directory.
+                directory = response[1]
+                fs.mkdir(directory)
+                
+            elif cmd == CREATE:
+                # CREATE: Create a new file.
+                filename = response[1]
+                fs.create(filename)
+                
+            elif cmd == MV:
+                # MV: Move a file from one directory to another
+                # directory location. The filename is optionally
+                # allowed to change too.
+                originalLocation = response[1]
+                newLocation = response[2]
+                fs.mv(originalLocation, newLocation)
+                
+            elif cmd == READ:
+                # READ: Read a length of a file from the file
+                # system.
+                filename = response[1]
+                offset = response[2]
+                length = response[3]
+                ret = fs.read(filename, offset, length)
+                print(ret)
+                
+            elif cmd == WRITE:
+                # WRITE: Write a string (packed between quotations)
+                filename = response[1]
+                msg = response[2]
+                offset = response[3]
+                fs.write('/A/B/file.txt', msg, offset)
+                
+            elif cmd == STATUS:
+                fs.status()
+                
+            elif cmd == RM:
+                print('rm')
+                
+            else:
+                location = response[1]
+                fs.rm(location)
+            
+        except Exception:
+            print("Command (" + str(cmd) + ") not recognized..")
+
+'''
+SUMMARY: testbench
+This function is the testbench ran on the HW3/4 file system.
+'''
+def testbench():
+    Initialize_My_FileSystem()
+    fs = FileSystemOperations()
+    
+    start = time.time()
     msg = "Hello world! "*50
     
     announce("FILE FAILED CREATION..")
@@ -143,4 +231,9 @@ if __name__ == '__main__':
     my_object.rm("A/1.txt")
     my_object.status()
     '''
+
+if __name__ == '__main__':
+    if mode == 0:   main()
+    elif mode == 1: testbench()
+
 

@@ -14,9 +14,9 @@ class InodeNumberLayer():
     #ASKS FOR INODE FROM INODE NUMBER FROM MemoryInterface.(BLOCK LAYER HAS NOTHING TO DO WITH INODES SO SEPERTAE HANDLE)
     def INODE_NUMBER_TO_INODE(self, inode_number):
         array_inode = MemoryInterface.inode_number_to_inode(inode_number)
-	print("INTI: array_inode", array_inode)
+	#print("INTI: array_inode", array_inode)
         inode = InodeOps.InodeOperations().convert_array_to_table(array_inode)
-	print(inode)
+	#print(inode)
         if inode: inode.time_accessed = datetime.datetime.now()   #TIME OF ACCESS
         return inode
 
