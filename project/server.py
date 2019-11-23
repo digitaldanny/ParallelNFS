@@ -4,13 +4,14 @@
 import xmlrpclib
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
-import time, Memory, pickle , InodeOps, config, DiskLayout, sys
+import time, Memory, pickle , InodeOps, config, DiskLayout, sys, os
 
 global portNumber
 
 filesystem = Memory.Operations()
 
 state = True
+Quit = 0
 
 def configure():
 	configuration = [config.TOTAL_NO_OF_BLOCKS, config.BLOCK_SIZE, config.MAX_NUM_INODES, config.INODE_SIZE, config.MAX_FILE_NAME_SIZE]
@@ -75,6 +76,11 @@ def corruptData():
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
+def kill():
+    global Quit
+    Quit = 1
+    return pickle.dumps(0)
+
 portNumber = int(sys.argv[1])
 #portNumber = 8000
 server = SimpleXMLRPCServer(("localhost",portNumber))
@@ -90,5 +96,8 @@ server.register_function(free_data_block, 		"free_data_block")
 server.register_function(update_data_block, 	"update_data_block")
 server.register_function(update_inode_table, 	"update_inode_table")
 server.register_function(inode_number_to_inode, "inode_number_to_inode")
-server.register_function(status, 				"status")
-server.serve_forever()
+server.register_function(status, 				    "status")
+server.register_function(kill,                  "kill")
+#server.serve_forever()
+
+while not Quit: server.handle_request()
