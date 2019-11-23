@@ -64,7 +64,7 @@ if __name__ == '__main__':
     Initialize_My_FileSystem()
     fs = FileSystemOperations()
     #announce("INIT MEMORY")
-    #fs.status()
+    fs.status()
     
     # FILE WRITE/READ TEST ----------------------------------------------------
     msg = "Hello world! "*50
