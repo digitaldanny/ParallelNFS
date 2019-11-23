@@ -174,10 +174,12 @@ def testbench():
     announce("WRITE COMPLETE..")
     fs.write('/A/B/file.txt', msg, offset=0)
     
+    announce("READ COMPLETE..")
     ret = fs.read('/A/B/file.txt', 0, 12)
     if ret == -1: endit()
     
-    #fs.status()
+    fs.status()
+    
     fs.write('/A/B/file.txt', 'i', offset=1)
     ret = fs.read('/A/B/file.txt', 0, 12)
     if ret == -1: endit()
@@ -216,7 +218,7 @@ def testbench():
     
     end = time.time()
     print "RPC TESTBENCH TIME: " + str(end - start)
-
+    
     '''Examples:
     my_object.mkdir("/A")
     my_object.status()
