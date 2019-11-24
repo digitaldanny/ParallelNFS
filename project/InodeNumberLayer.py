@@ -194,12 +194,12 @@ class InodeNumberLayer():
         
         # get the parent inode - if inode does not exist, return an error.
         dirInode = self.INODE_NUMBER_TO_INODE(parent_inode_number)
-	print("dirInode",dirInode)
+	#print("dirInode",dirInode)
         if dirInode == -1: return -1
         
         # search for the file inode inside the parent (directory) inode as a 
         # value of the {filename, inode} dictionary.
-	print("DIRINIDE",dirInode.directory.values(),inode_number)
+	#print("DIRINIDE",dirInode.directory.values(),inode_number)
         if inode_number not in dirInode.directory.values(): return -1
         fileInode = self.INODE_NUMBER_TO_INODE(inode_number)
         
