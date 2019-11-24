@@ -15,9 +15,9 @@ class client_stub():
         self.distribute_load = 0
         self.virtual_block_size = config.TOTAL_NO_OF_BLOCKS
         self.virtual_inode_size = config.INODE_SIZE
-        self.proxy = [None for i in range(0, 3)]
+        self.proxy = [None for i in range(N)]
         
-        for i in range(0, N-1):
+        for i in range(N):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
 
@@ -27,7 +27,7 @@ class client_stub():
     # example provided for initialize
     def Initialize(self):
         try:
-            for i in range(0, N-1):
+            for i in range(N):
                 self.proxy[i].Initialize()
         
         except Exception as err :
@@ -44,7 +44,12 @@ class client_stub():
     '''
     def status(self):
         try:
-            rx = self.proxy[0].status()
+            rx = ''
+            for i in range(N):
+                #rx += "+-----------------------------------------+"
+                #rx += "PORT NUM: " + str(port + i)
+                #rx += "+-----------------------------------------+"
+                rx += self.proxy[i].status()
             return pickle.loads(rx)
         except Exception:
             print "ERROR (status): Server failure.."
@@ -80,7 +85,7 @@ class client_stub():
             # this function distributes the load of the servers by incrementing
             # which server returns a new block number every time this function
             # is called.
-            if self.distribute_load < N-1:
+            if self.distribute_load < N:
                 self.distribute_load += 1 
             else:
                 self.distribute_load = 0
@@ -118,18 +123,12 @@ class client_stub():
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     
     def inode_number_to_inode(self, virtual_inode_number):
-	print("CS: inode_number_to_inode")
-	print(self.__physical_inode_of_virtual_inode(virtual_inode_number), virtual_inode_number)
-	p = self.__proxy_of_virtual_inode(virtual_inode_number)
-        print(p)
-	try:
+        self.__proxy_of_virtual_inode(virtual_inode_number)
+    	try:
             serialMessage = pickle.dumps(self.__physical_inode_of_virtual_inode(virtual_inode_number))
             p = self.__proxy_of_virtual_inode(virtual_inode_number)
-            print(p)
             rx = p.inode_number_to_inode(serialMessage)
             deserialized = pickle.loads(rx)
-	    #print("deserialized: ", deserialized)
-	    #desearialized contains retVal, state - when retVal is true, server is working
             return deserialized[0]
         except Exception:
             print "ERROR (inode_number_to_inode): Server failure.."
@@ -139,11 +138,10 @@ class client_stub():
         try:
             serialIn1 = pickle.dumps(inode)
             serialIn2 = pickle.dumps(self.__physical_inode_of_virtual_inode(virtual_inode_number))
-	    for i in range(0, N-1):
+	    for i in range(N):
                 p = self.proxy[i]
                 rx = p.update_inode_table(serialIn1, serialIn2)
             deserialized = pickle.loads(rx)
-	    #deserialized = (retVal,state)
             return deserialized[0]
         except Exception:
             print "ERROR (update_inode_table): Server failure.."
@@ -162,7 +160,6 @@ class client_stub():
     def __translate_virtual_to_physical_block(self, virtual_block_num):
         serverNum = (int)(math.floor(virtual_block_num/self.virtual_block_size))
         localBlockNum = virtual_block_num % self.virtual_block_size
-	#print(serverNum, localBlockNum, virtual_block_num)
         return (serverNum, localBlockNum)
     
     '''
@@ -179,9 +176,7 @@ class client_stub():
     number passed in.
     '''
     def __proxy_of_virtual_block(self, virtual_block_number):
-	#print("Made it")
         serverNum = self.__translate_virtual_to_physical_block(virtual_block_number)
-	#print("serverNum: ", serverNum)
         return self.proxy[serverNum[0]]
 
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -212,9 +207,7 @@ class client_stub():
     number passed in.
     '''
     def __proxy_of_virtual_inode(self, virtual_inode_number):
-	#print("__proxy_of_virtual_inode")
         serverNum = self.__translate_virtual_to_physical_inode(virtual_inode_number)
-	#print("serverNum: ", serverNum)
         return self.proxy[serverNum[0]]
 
     '''
@@ -222,7 +215,5 @@ class client_stub():
     Returns physical inode object based on the virtual inode number passed in.
     '''
     def __physical_inode_of_virtual_inode(self, virtual_inode_number):
-	#print("__physical_inode_of_virtual_inode")
         serverNum = self.__translate_virtual_to_physical_inode(virtual_inode_number)
-	#print("serverNum: ", serverNum)
         return serverNum[1]

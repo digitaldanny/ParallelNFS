@@ -19,33 +19,51 @@ def configure():
 	return retVal
 
 def Initialize():
+        print('+-----'*10)
+        print('Initialize')
+        print('+-----'*10)
 	retVal = Memory.Initialize()
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
 def addr_inode_table():
+        print('+-----'*10)
+        print('addr_inode_table')
+        print('+-----'*10)
 	retVal = filesystem.addr_inode_table()
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
 def get_data_block(block_number):
+        print('+-----'*10)
+        print('get_data_block')
+        print('+-----'*10)
 	passVal = pickle.loads(block_number)
 	retVal  = filesystem.get_data_block(passVal)
 	retVal  = pickle.dumps((retVal,state))
 	return retVal
 
 def get_valid_data_block():	
+        print('+-----'*10)
+        print('get_valid_data_block')
+        print('+-----'*10)
 	retVal = filesystem.get_valid_data_block()
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
 def free_data_block(block_number):  
+        print('+-----'*10)
+        print('free_data_block')
+        print('+-----'*10)
 	passVal = pickle.loads(block_number)
 	retVal  = filesystem.free_data_block(passVal)
 	retVal  = pickle.dumps((retVal,state))
 	return retVal
 
 def update_data_block(block_number, block_data):	
+        print('+-----'*10)
+        print('update_data_block')
+        print('+-----'*10)
 	passVal1 = pickle.loads(block_number)
 	passVal2 = pickle.loads(block_data)
 	retVal 	 = filesystem.update_data_block(passVal1, passVal2)
@@ -53,6 +71,9 @@ def update_data_block(block_number, block_data):
 	return retVal
 
 def update_inode_table(inode, inode_number):
+        print('+-----'*10)
+        print('update_inode_table')
+        print('+-----'*10)
 	passVal1 = pickle.loads(inode)
 	passVal2 = pickle.loads(inode_number)
 	retVal 	 = filesystem.update_inode_table(passVal1, passVal2)
@@ -60,26 +81,38 @@ def update_inode_table(inode, inode_number):
 	return retVal
 
 def inode_number_to_inode(inode_number):
+        print('+-----'*10)
+        print('inode_number_to_inode')
+        print('+-----'*10)
 	passVal = pickle.loads(inode_number)
 	retVal  = filesystem.inode_number_to_inode(passVal)
 	retVal  = pickle.dumps((retVal,state))
 	return retVal
 
 def status():
+        print('+-----'*10)
+        print('status')
+        print('+-----'*10)
 	retVal = filesystem.status()
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
 def corruptData():
+        print('+-----'*10)
+        print('corruptData')
+        print('+-----'*10)
         state = False
 	retVal = 'Data Corrupted in server ' + str(portNumber)
 	retVal = pickle.dumps((retVal,state))
 	return retVal
 
 def kill():
-    global Quit
-    Quit = 1
-    return pickle.dumps(0)
+        print('+-----'*10)
+        print('kill')
+        print('+-----'*10)
+        global Quit
+        Quit = 1
+        return pickle.dumps(0)
 
 portNumber = int(sys.argv[1])
 #portNumber = 8000

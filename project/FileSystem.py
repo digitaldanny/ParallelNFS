@@ -23,6 +23,7 @@ READ    = 'read'
 WRITE   = 'write'
 STATUS  = 'status'
 RM      = 'rm'
+TEST    = 'test'
 
 def Initialize_My_FileSystem():
     MemoryInterface.Initialize_My_FileSystem()
@@ -134,17 +135,34 @@ def main():
                 fs.write('/A/B/file.txt', msg, offset)
                 
             elif cmd == STATUS:
+                # STATUS:
                 fs.status()
                 
             elif cmd == RM:
-                print('rm')
+                # RM: Remove a file or directory.
+                location = response[1]
+                fs.rm(location)
+                
+            elif cmd == TEST:
+                # TEST: This is a dummy function used to quickly
+                # set up the file system for testing an input.
+                dir1        = '/a'
+                dir2        = '/b'
+                filename    = '/file.txt'
+                msg         = 'Hi this is a test'
+                offset      = 0
+                
+                fs.mkdir(dir1)
+                fs.mkdir(dir1 + dir2)
+                fs.create(dir1 + dir2 + filename)
+                fs.write(dir1 + dir2 + filename, msg, offset)
                 
             else:
                 location = response[1]
                 fs.rm(location)
             
         except Exception:
-            print("Command (" + str(cmd) + ") not recognized..")
+            print("Command (" + str(cmd) + ") failed..")
 
 '''
 SUMMARY: testbench
