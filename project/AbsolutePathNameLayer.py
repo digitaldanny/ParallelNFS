@@ -24,7 +24,6 @@ class AbsolutePathNameLayer():
 			interface.new_entry('/', -1, type)
 			return 
 		inode_number_of_parent = self.GENERAL_PATH_TO_HOME_INODE_NUMBER(path)
-		print("inode_number_of_parent: ", inode_number_of_parent)
 		if inode_number_of_parent == -1: 
 			print("Error AbsolutePathLayer: Wrong Path!")
 			return -1
