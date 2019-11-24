@@ -148,11 +148,11 @@ class client_stub():
             print "ERROR (inode_number_to_inode): Server failure.."
             return -1
     
-    def update_inode_table(self, inode, inode_number):
+    def update_inode_table(self, inode, virtual_inode_number):
         try:
             serialIn1 = pickle.dumps(inode)
             serialIn2 = pickle.dumps(self.__physical_inode_of_virtual_inode(virtual_inode_number))
-	          for i in range(N):
+	    for i in range(N):
                 p = self.proxy[i]
                 rx = p.update_inode_table(serialIn1, serialIn2)
             deserialized = pickle.loads(rx)
