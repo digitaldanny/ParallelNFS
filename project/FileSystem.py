@@ -122,16 +122,15 @@ def main():
                 # READ: Read a length of a file from the file
                 # system.
                 filename = response[1]
-                offset = response[2]
-                length = response[3]
-                ret = fs.read(filename, offset, length)
-                print(ret)
+                offset = int(response[2])
+                length = int(response[3])
+                fs.read(filename, offset, length)
                 
             elif cmd == WRITE:
                 # WRITE: Write a string (packed between quotations)
                 filename = response[1]
                 msg = response[2]
-                offset = response[3]
+                offset = int(response[3])
                 fs.write('/A/B/file.txt', msg, offset)
                 
             elif cmd == STATUS:
