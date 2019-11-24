@@ -136,23 +136,24 @@ class client_stub():
     #                            INODE FUNCTIONS
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     
-    def inode_number_to_inode(self, virtual_inode_number):
-        self.__proxy_of_virtual_inode(virtual_inode_number)
-    	try:
-            serialMessage = pickle.dumps(self.__physical_inode_of_virtual_inode(virtual_inode_number))
-            p = self.__proxy_of_virtual_inode(virtual_inode_number)
-            rx = p.inode_number_to_inode(serialMessage)
-            deserialized = pickle.loads(rx)
+    def inode_number_to_inode(self, inode_number):
+	try:
+            serialMessage = pickle.dumps(inode_number)
+	    for i in range(N*2):
+		p = self.proxy[i]
+                rx = p.inode_number_to_inode(serialMessage)
+                deserialized = pickle.loads(rx)
+		if(deserialized[1] == True): break
             return deserialized[0]
         except Exception:
             print "ERROR (inode_number_to_inode): Server failure.."
             return -1
     
-    def update_inode_table(self, inode, virtual_inode_number):
+    def update_inode_table(self, inode, inode_number):
         try:
             serialIn1 = pickle.dumps(inode)
-            serialIn2 = pickle.dumps(self.__physical_inode_of_virtual_inode(virtual_inode_number))
-	    for i in range(N):
+            serialIn2 = pickle.dumps(inode_number)
+	    for i in range(N*2):
                 p = self.proxy[i]
                 rx = p.update_inode_table(serialIn1, serialIn2)
             deserialized = pickle.loads(rx)
@@ -193,41 +194,3 @@ class client_stub():
         serverNum = self.__translate_virtual_to_physical_block(virtual_block_number)
         return self.proxy[serverNum[0]]
 
-    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-    #                          INODE NUMBER MAPPING
-    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-
-    '''
-    SUMMARY: __translate_virtual_to_physical_inode
-    Translates a virtual inode number to a physical inode number and the port 
-    offset for the target server.
-    '''
-    def __translate_virtual_to_physical_inode(self, virtual_inode_num):
-        serverNum = (int)(math.floor(virtual_inode_num/self.virtual_inode_size))
-        localInodeNum = virtual_inode_num % self.virtual_inode_size
-        return (serverNum, localInodeNum)
-    
-    '''
-    SUMMARY: __translate_physical_to_virtual_inode
-    Translates physical inode number and server number it comes from to a virtual
-    inode number to be used in the client filesystem.
-    '''
-    def __translate_physical_to_virtual_inode(self, server_num, physical_inode_num):
-        return (server_num * self.virtual_inode_size) + physical_inode_num
-
-    '''
-    SUMMARY: __proxy_of_virtual_inode
-    Returns proxy object from the server's proxy list based on the virtual inode
-    number passed in.
-    '''
-    def __proxy_of_virtual_inode(self, virtual_inode_number):
-        serverNum = self.__translate_virtual_to_physical_inode(virtual_inode_number)
-        return self.proxy[serverNum[0]]
-
-    '''
-    SUMMARY: __physical_inode_of_virtual_inode
-    Returns physical inode object based on the virtual inode number passed in.
-    '''
-    def __physical_inode_of_virtual_inode(self, virtual_inode_number):
-        serverNum = self.__translate_virtual_to_physical_inode(virtual_inode_number)
-        return serverNum[1]
