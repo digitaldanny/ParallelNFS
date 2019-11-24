@@ -1,7 +1,7 @@
 # SKELETON CODE FOR CLIENT STUB HW4
 import xmlrpclib, config, pickle, math
 
-N       = 4     # number of servers running RAID-5
+N       = 2     # number of pairs of servers running RAID-1
 port    = 8000  # starting port number to initialize proxies
 
 '''
@@ -16,10 +16,11 @@ class client_stub():
         self.virtual_block_size = config.TOTAL_NO_OF_BLOCKS
         self.virtual_inode_size = config.INODE_SIZE
         
-        self.proxy = [None for i in range(N)]
+        self.proxy = [None for i in range(N*2)]
         for i in range(N):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
+	print(self.proxy)
 
 
     # DEFINE FUNCTIONS HERE
@@ -27,7 +28,7 @@ class client_stub():
     # example provided for initialize
     def Initialize(self):
         try:
-            for i in range(N):
+            for i in range(N*2):
                 self.proxy[i].Initialize()
         
         except Exception as err :
@@ -45,7 +46,7 @@ class client_stub():
     def status(self):
         try:
             rx = ''
-            for i in range(N):
+            for i in range(N*2):
                 #rx += "+-----------------------------------------+"
                 #rx += "PORT NUM: " + str(port + i)
                 #rx += "+-----------------------------------------+"
@@ -63,21 +64,19 @@ class client_stub():
 	try:
 	    (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialMessage = pickle.dumps(physicalBlock)
-            p = self.proxy[serverNum]
-            rx = p.get_data_block(serialMessage)
-            deserialized = pickle.loads(rx)
+	    for i in range(2):
+		p = self.proxy[serverNum*2 + i]
+                rx = p.get_data_block(serialMessage)
+                deserialized = pickle.loads(rx)
+		if(deserialized[1] == True): break
             return deserialized[0]
         except Exception:
             print "ERROR (get_data_block): Server failure.."
             return -1
     
     def get_valid_data_block(self):
-	p = self.proxy[self.distribute_load]
-	rx = p.get_valid_data_block()
-        (blockNum,state) = pickle.loads(rx)
-	
         try:
-            p = self.proxy[self.distribute_load]
+            p = self.proxy[self.distribute_load*2]
             rx = p.get_valid_data_block()
             (blockNum,state) = pickle.loads(rx)
             
@@ -101,16 +100,14 @@ class client_stub():
             return -1 
     
     def free_data_block(self, virtual_block_number):
-        (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
-        serialMessage = pickle.dumps(physicalBlock)
-        p = self.proxy[serverNum]
-	print(serverNum,physicalBlock,virtual_block_number)
 	try:
 	    (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialMessage = pickle.dumps(physicalBlock)
-            p = self.proxy[serverNum]
-            rx = p.free_data_block(serialMessage)
-            deserialized = pickle.loads(rx)
+            p1 = self.proxy[serverNum*2]
+	    p2 = self.proxy[serverNum*2 + 1]
+            rx1 = p1.free_data_block(serialMessage)
+	    rx2 = p2.free_data_block(serialMessage)
+            deserialized = pickle.loads(rx1)
             return deserialized[0]
         except Exception:
             print "ERROR (free_data_block): Server failure.."
@@ -121,9 +118,11 @@ class client_stub():
 	    (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialIn1 = pickle.dumps(physicalBlock)
             serialIn2 = pickle.dumps(block_data)
-            p = self.proxy[serverNum]
-            rx = p.update_data_block(serialIn1, serialIn2)
-            deserialized = pickle.loads(rx)
+            p1 = self.proxy[serverNum*2]
+	    p2 = self.proxy[serverNum*2 + 1]
+            rx1 = p1.update_data_block(serialIn1, serialIn2)
+	    rx2 = p2.update_data_block(serialIn1, serialIn2)
+            deserialized = pickle.loads(rx1)
             return deserialized[0]
         except Exception:
             print "ERROR (update_data_block): Server failure.."
@@ -136,7 +135,7 @@ class client_stub():
     def inode_number_to_inode(self, inode_number):
 	try:
             serialMessage = pickle.dumps(inode_number)
-	    for i in range(N):
+	    for i in range(N*2):
 		p = self.proxy[i]
                 rx = p.inode_number_to_inode(serialMessage)
                 deserialized = pickle.loads(rx)
@@ -150,7 +149,7 @@ class client_stub():
         try:
             serialIn1 = pickle.dumps(inode)
             serialIn2 = pickle.dumps(inode_number)
-	    for i in range(N):
+	    for i in range(N*2):
                 p = self.proxy[i]
                 rx = p.update_inode_table(serialIn1, serialIn2)
             deserialized = pickle.loads(rx)
@@ -172,7 +171,7 @@ class client_stub():
     def __translate_virtual_to_physical_block(self, virtual_block_num):
         serverNum = (int)(math.floor(virtual_block_num/self.virtual_block_size))
         localBlockNum = virtual_block_num % self.virtual_block_size
-        return (serverNum, localBlockNum)
+        return (serverNum*2, localBlockNum)
     
     '''
     SUMMARY: __translate_physical_to_virtual_block
@@ -189,5 +188,4 @@ class client_stub():
     '''
     def __proxy_of_virtual_block(self, virtual_block_number):
         serverNum = self.__translate_virtual_to_physical_block(virtual_block_number)
-        return self.proxy[serverNum[0]]
-
+        return self.proxy[serverNum[0]*2]

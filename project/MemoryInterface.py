@@ -1,11 +1,10 @@
 '''
 THIS MODULE INTERACTS WITH THE MEMORY
 ''' 
-import time, client_stub
+import time, client_stub, client_stub_RAID_1
 
 #HANDLE FOR MEMORY OPERATIONS
-client_stub = client_stub.client_stub()
-
+client_stub = None
 
 #REQUEST TO BOOT THE FILE SYSTEM
 def Initialize_My_FileSystem():

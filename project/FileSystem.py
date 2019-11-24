@@ -1,4 +1,4 @@
-import time, MemoryInterface, AbsolutePathNameLayer
+import time, MemoryInterface, AbsolutePathNameLayer, client_stub, client_stub_RAID_1, sys
 
 '''
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -9,6 +9,7 @@ mode -  0: command line mode for final project
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 '''
 mode    = 0
+RAID	= 5
 
 '''
 +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
@@ -253,6 +254,14 @@ def testbench():
     '''
 
 if __name__ == '__main__':
+    RAID = int(sys.argv[1])
+    if(RAID == 5):
+        MemoryInterface.client_stub = client_stub.client_stub()
+	print("MODE: RAID 5")
+    elif(RAID == 1):
+        MemoryInterface.client_stub = client_stub_RAID_1.client_stub()
+	print("MODE: RAID 1")
+    print(RAID)
     if mode == 0:   main()
     elif mode == 1: testbench()
 

@@ -62,6 +62,7 @@ class FileNameLayer():
 
         # search for the file/directory inode numbers to perform the read
         (parentInodeNum, childInodeNum) = self.__decode_parent_child_inode_nums(path, inode_number_cwd)
+        
         if (parentInodeNum, childInodeNum) == (-1, -1): return -1
 
         # if the parent/child inode numbers have been found, read the data from the 
