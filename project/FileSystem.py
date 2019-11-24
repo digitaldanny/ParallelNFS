@@ -156,6 +156,7 @@ def main():
                 fs.mkdir(dir1 + dir2)
                 fs.create(dir1 + dir2 + filename)
                 fs.write(dir1 + dir2 + filename, msg, offset)
+		fs.read(dir1 + dir2 + filename, offset, 17)
                 
             else:
                 location = response[1]
