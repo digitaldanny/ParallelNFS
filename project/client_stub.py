@@ -139,7 +139,7 @@ class client_stub():
     def inode_number_to_inode(self, inode_number):
 	try:
             serialMessage = pickle.dumps(inode_number)
-	    for i in range(N*2):
+	    for i in range(N):
 		p = self.proxy[i]
                 rx = p.inode_number_to_inode(serialMessage)
                 deserialized = pickle.loads(rx)
@@ -153,7 +153,7 @@ class client_stub():
         try:
             serialIn1 = pickle.dumps(inode)
             serialIn2 = pickle.dumps(inode_number)
-	    for i in range(N*2):
+	    for i in range(N):
                 p = self.proxy[i]
                 rx = p.update_inode_table(serialIn1, serialIn2)
             deserialized = pickle.loads(rx)
