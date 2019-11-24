@@ -20,7 +20,6 @@ class client_stub():
         for i in range(N):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
-	print(self.proxy)
 
 
     # DEFINE FUNCTIONS HERE
@@ -73,11 +72,9 @@ class client_stub():
             return -1
     
     def get_valid_data_block(self):
-	print("get_valid_data_block")
 	p = self.proxy[self.distribute_load]
 	rx = p.get_valid_data_block()
         (blockNum,state) = pickle.loads(rx)
-	print(self.distribute_load)
 	
         try:
             p = self.proxy[self.distribute_load]
