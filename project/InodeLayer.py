@@ -170,7 +170,7 @@ class InodeLayer():
             # if the string is being replaced, update the blockNumber and deallocate old block. 
             # Otherwise, add the blockNumber to the end of the file.
             if nDeallocateIdx < len(inode.blk_numbers):
-		if(inode.blk_numbers[nDeallocateIdx] != -1): 
+                if(inode.blk_numbers[nDeallocateIdx] != -1): 
                     interface.free_data_block( inode.blk_numbers[nDeallocateIdx] ) # deallocate old block
                 nBlockNum = interface.get_valid_data_block() # allocate new block
                 interface.update_data_block(nBlockNum, ''.join(nDataList)) # write to the new block
@@ -191,8 +191,7 @@ class InodeLayer():
                 return ['\0' for i in range(config.BLOCK_SIZE)]
        
         # _WRITE_TO_OFFSET BEGIN ----------------------------------------------
-        self.free_data_block(inode, (int)(math.ceil(offset/config.BLOCK_SIZE)))
-	# print("offset",offset)
+        self.free_data_block(inode, (int)(math.floor(offset/config.BLOCK_SIZE)))
         inode.size = offset
         
         # Locate the index of the block number in the inode.block_nums referenced by the input offset.

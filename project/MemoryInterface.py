@@ -47,3 +47,6 @@ def update_inode_table(inode, inode_number):
 #REQUEST FOR THE STATUS OF FILE SYSTEM FROM SERVER
 def status():
     return client_stub.status()
+
+def kill_all():
+    client_stub.kill_all()
