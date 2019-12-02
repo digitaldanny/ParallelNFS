@@ -3,6 +3,8 @@ import xmlrpclib, config, pickle, math
 
 N       = 4     # number of servers running RAID-5
 port    = 8000  # starting port number to initialize proxies
+PREV 	= 'P'
+NEXT 	= 'N'
 
 '''
 SUMMARY: client_stub
@@ -11,18 +13,15 @@ numbers and block numbers on the individual servers.
 '''
 class client_stub():
 
-    def __init__(self):
+	'''
+	SUMMARY: __init__
+	Initialize proxies, etc..
 	
-        # block map is used for checking that the parity/data blocks were configured properly
-        self.block_map_pcnt = 0	# parity block count
-        self.block_map_dcnt = 0	# data block count
-        self.block_map_tcnt = 0 # total number of blocks in map
-        self.block_map = ['' for i in range(N*config.TOTAL_NO_OF_BLOCKS)]
-        
-        # load distribution parameters
-        self.parity_blocks 	= [-1 for i in range(config.TOTAL_NO_OF_BLOCKS)]
-        self.data_blk_ptr 	= 0 # first data block claimed will be at index 0
-        self.parity_blk_ptr = 1 # parity block always starts 1 over
+	NOTE:
+	This function initially claims ~TOTAL_NO_OF_BLOCKS/N parity blocks. If
+	the number is not a multiple of N, claim enough blocks until it is.
+	'''
+    def __init__(self):
         
         # load configuration file properties
         self.virtual_block_size = config.TOTAL_NO_OF_BLOCKS
@@ -33,6 +32,28 @@ class client_stub():
         for i in range(N):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
+			
+		# points to the next server to request a data block from
+		# (starts at the far end because parity_blocks claims using
+		# __prev function).
+		self.data_blk_ptr = N-1
+			
+		# claim the first NUM_BLOCKS/N virtual blocks to use as parity blocks
+		self.block_claim_dir = PREV
+		self.num_parity_blocks = math.ceil(config.TOTAL_NO_OF_BLOCKS/N)
+		
+		# if the number of parity blocks is not a multiple of N, continue incrementing
+		# until it is.
+		while (self.num_parity_blocks % N > 0):
+			self.num_parity_blocks += 1
+		
+		# claim the parity blocks and switch the direction of block claiming
+		self.parity_blocks 	= [None for i in range(self.num_parity_blocks)]
+		for i in range(self.num_parity_blocks):
+			self.parity_blocks[i] = self.get_valid_data_block()
+			
+		self.block_claim_dir = NEXT
+		print("NUMBER OF PARITY BLOCKS CLAIMED: " + str(self.num_parity_blocks))
 
     # initialize the servers
     def Initialize(self):
@@ -50,44 +71,6 @@ class client_stub():
     def kill_all(self):
         for i in range(N):
             self.proxy[i].kill()
-	
-    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
-    #                            DEBUG MAP FUNCTIONS
-    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+	
-    '''
-    SUMMARY: check_map
-    Print out the parity and data block map for debugging.
-    '''
-    def check_map(self):
-        
-        # determine how much of the array to display to the user
-        for i in range(int(math.ceil(self.block_map_tcnt/N))):
-            array = ['' for j in range(N)]
-            
-            # place parts of the block map into the string to be displayed
-            for j in range(N):
-                array[j] = self.block_map[N*i + j]
-                
-            print(' | '.join(array))
-
-    '''
-    SUMMARY: add_to_debug_map
-    Add a new element to the debugger map.
-    type 	- 'D' => data
-                    - 'P' => parity
-    '''
-    def add_to_debug_map(self, t):
-        sym = 'XX'
-        if t  == 'D':
-            sym = t + str(self.block_map_dcnt)
-            self.block_map_dcnt += 1
-                
-        elif t == 'P':
-            sym = t + str(self.block_map_pcnt)
-            self.block_map_pcnt += 1
-        
-        self.block_map[self.block_map_tcnt] = sym
-        self.block_map_tcnt += 1
 
     '''
     SUMMARY: RPC wrapper functions
@@ -96,23 +79,30 @@ class client_stub():
     server fails at some point, these functions will return -1.
     '''
     def status(self):
-        self.check_map()
-        # try:
-        #     rx = ''
-        #     for i in range(N):
-        #         #rx += "+-----------------------------------------+"
-        #         #rx += "PORT NUM: " + str(port + i)
-        #         #rx += "+-----------------------------------------+"
-        #         rx += self.proxy[i].status()
-        #     return pickle.loads(rx)
-        # except Exception:
-        #     print "ERROR (status): Server failure.."
-        #     return -1  
+        try:
+            rx = ''
+            for i in range(N):
+                #rx += "+-----------------------------------------+"
+                #rx += "PORT NUM: " + str(port + i)
+                #rx += "+-----------------------------------------+"
+                rx += self.proxy[i].status()
+            return pickle.loads(rx)
+        except Exception:
+            print "ERROR (status): Server failure.."
+            return -1  
 
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     #                            BLOCK FUNCTIONS
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
         
+	'''
+	SUMMARY: get_data_block
+	Return the contents of a data block on the appropriate server.
+	
+	NOTE:
+	This function handles if the requested server of the virtual block number
+	has a failure by reconstructing the data using the blocks from other servers.
+	'''
     def get_data_block(self, virtual_block_number):
         try:
             (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
@@ -125,75 +115,51 @@ class client_stub():
             print "ERROR (get_data_block): Server failure.."
             return -1
 
+
+	'''
+	SUMMARY: get_valid_data_block
+	Return the next available virtual block number by incrementing the target
+	proxy to request a block from. After requesting a block from each server, 
+	the pointer will wrap back to 0.
+	'''
     def get_valid_data_block(self):
-	
-        '''
-        SUMMARY: __next
-        This function handles the wrap around for picking which server's 
-        get_valid_data_block function from.
-        '''
-        def __next(ptr):
-            if ptr < N-1:
-                ptr += 1 
-            else:
-                ptr = 0
-            return ptr
 
         try:
-            # DATA/PARITY BLOCK RETREIVE ---------------------------------------------
+            # Retrieve the physical block
             p = self.proxy[self.data_blk_ptr]
             rx = p.get_valid_data_block()
             (blockNum,state) = pickle.loads(rx)
-            self.add_to_debug_map('D') # for debug purposes
-            
+                       
             # map physical block number to virtual block number before returning
             # to the client.
             serverNum = self.data_blk_ptr
             pBlockNum = blockNum 
             virtual_block_number = self.__translate_physical_to_virtual_block(serverNum, pBlockNum)
 			
-            # instantiate a new parity block if it does not exist for
-            # this physical block number.
-            print("CS: physical block num: " + str(pBlockNum))
-            print("CS: parity_blocks[pBlockNum] = " + str(self.parity_blocks[pBlockNum]))
-            if self.parity_blocks[pBlockNum] == -1:
-        
-                # parity block DNE -> create a new parity block
-                p = self.proxy[self.parity_blk_ptr]
-                
-                # get a new block number to be used for parity
-                rx = p.get_valid_data_block()
-                
-                # get the virtual block number
-                (physParityBlockNum,state) = pickle.loads(rx)	# phys block num
-                serverNum = self.parity_blk_ptr					# server num
-                virtual_parity_block_number = self.__translate_physical_to_virtual_block(serverNum, physParityBlockNum)
-                
-                # save the parity block's virtual address
-                self.parity_blocks[pBlockNum] = virtual_parity_block_number
-                self.add_to_debug_map('P') # for debug purposes
-
-            # POINTER HANDLING -------------------------------------------------------
-            # this function distributes the load of the servers by incrementing
-            # which server returns a new block number every time this function
-            # is called.
-            self.data_blk_ptr = __next(self.data_blk_ptr)
-                
-            # parity block always has priority so data block pointer should skip
-            # if they are equal.
-            if self.data_blk_ptr == self.parity_blk_ptr:
-                self.data_blk_ptr = __next(self.data_blk_ptr)
-                    
-            # parity points to the next block every new offset (when ServerNum == 0)
-            if self.data_blk_ptr == 0:
-                self.parity_blk_ptr = __next(self.parity_blk_ptr)
-    
+			# point to the next server to write data to..
+			# block_claim_dir is changed in the init function so the parity
+			# blocks and data blocks are claimed in opposite directions.
+			if self.block_claim_dir == NEXT:
+				# server pattern: 0, 1, 2, 3,.. 0, 1, 2, 3
+				self.data_blk_ptr = self.__next(self.data_blk_ptr)
+			else
+				# server pattern: 3, 2, 1, 0,.. 3, 2, 1, 0
+				self.data_blk_ptr = self.__prev(self.data_blk_ptr)
+				
             return virtual_block_number
 			
         except Exception:
             print "ERROR (get_valid_data_block): Server failure.."
             return -1 
     
+	'''
+	SUMMARY: free_data_block
+	Deallocate the specified data block.
+	
+	NOTE:
+	This function also reads back the current DATA/PARITY blocks to adjust
+	update the parity block.
+	'''
     def free_data_block(self, virtual_block_number):
         (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
         serialMessage = pickle.dumps(physicalBlock)
@@ -210,15 +176,62 @@ class client_stub():
             print "ERROR (free_data_block): Server failure.."
             return -1
     
+	'''
+	SUMMARY: update_data_block
+	Write the data block data to the appropriate server.
+	
+	NOTE:
+	This function also reads back the DATA/PARITY blocks to calculate
+	and update the parity data.
+	
+	The steps are labeled as 1,2,3,4 to match guide shown in the lecture
+	slides (slide 66 - Parity in RAID 4,5)
+	'''
     def update_data_block(self, virtual_block_number, block_data):
         try:
-            (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
-            serialIn1 = pickle.dumps(physicalBlock)
-            serialIn2 = pickle.dumps(block_data)
-            p = self.proxy[serverNum]
-            rx = p.update_data_block(serialIn1, serialIn2)
+			print("CS: Entered (update_data_block)")
+			# read back the current data block contents (1.FIRST READ)
+            (serverNumData, pBlockData) = self.__translate_virtual_to_physical_block(virtual_block_number)
+			proxyData = self.proxy[serverNumData]				# find server 
+			serialBlockNumData = pickle.dumps(pBlockData)		# find physical block number
+			
+			rx = proxyData.get_data_block(serialBlockNumData)	# request the current data
+			currData = pickle.loads(rx)							# convert the string message into real data
+			print("CS: Got current data")
+			
+			# read back the current parity block contents (2. SECOND READ)
+			iparity = self.__physical_block_number_to_parity_index(pBlockData, serverNumData)	# parity block list index for specified data block
+			vParityNum = self.parity_blocks[iparity]											# virtual parity block number
+            (serverNumParity, pParityNum) = self.__translate_virtual_to_physical_block(vParityNum) # find the physical block number and server to read/write
+			proxyParity = self.proxy[serverNumParity]											# find server to read/write parity data from
+			serialBlockNumData = pickle.dumps(pParityNum)		# serialize data to send to the server
+			
+			rx = proxyParity.get_data_block(serialBlockNumData)	# request the current parity data
+			currParity = pickle.loads(rx)						# convert the string message into real data
+			print("CS: Got current parity")
+			
+			# calculate the new parity block contents
+			print("CURRENT DATA")
+			print(currData)
+			
+			print("CURRENT PARITY")
+			print(currParity)
+			newParity = currParity
+			
+			# update the parity block contents (4. FIRST WRITE)
+			serialBlockNum = pickle.dumps(pParityNum)
+            serialBlockData = pickle.dumps(newParity)
+            rx = proxyParity.update_data_block(serialBlockNum, serialBlockData)
+			print("CS: Updated parity")
+			
+			# update the data block with new data (3. SECOND WRITE)
+            serialBlockNum = pickle.dumps(pBlockData)
+            serialBlockData = pickle.dumps(block_data)
+            rx = proxyData.update_data_block(serialBlockNum, serialBlockData)
             deserialized = pickle.loads(rx)
+			print("CS: Updated data")
             return deserialized[0]
+			
         except Exception:
             print "ERROR (update_data_block): Server failure.."
             return -1 
@@ -253,6 +266,39 @@ class client_stub():
             print "ERROR (update_inode_table): Server failure.."
             return -1 
      
+    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+    #                          PARITY BLOCK MAPPING
+    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+	
+	'''
+	SUMMARY: __next
+    This function handles the wrap around for picking which server's 
+    is pointed at.
+	'''
+    def __next(self, ptr):
+        if ptr < N-1:
+            ptr += 1 
+        else:
+            ptr = 0
+        return ptr
+		
+	'''
+	SUMMARY: __prev
+	'''
+    def __prev(self, ptr):
+        if ptr > 0:
+            ptr -= 1 
+        else:
+            ptr = N-1
+        return ptr
+	
+	'''
+	SUMMARY: __physical_block_number_to_parity_index
+	Maps physical block number and server number to the appropriate parity block's 
+	index.
+	'''
+	def __physical_block_number_to_parity_index(self, physical_block_num, server_num):
+		return 0
         
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     #                          BLOCK NUMBER MAPPING
