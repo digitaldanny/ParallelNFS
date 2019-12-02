@@ -25,7 +25,6 @@ class client_stub():
         
         # load configuration file properties
         self.virtual_block_size = config.TOTAL_NO_OF_BLOCKS
-        self.virtual_inode_size = config.INODE_SIZE
 
         # proxies to the servers
         self.proxy = [None for i in range(N)]
@@ -37,17 +36,25 @@ class client_stub():
         # (starts at the far end because parity_blocks claims using
         # __prev function).
         self.data_blk_ptr = N-1
-        
+
         # claim the first NUM_BLOCKS/N virtual blocks to use as parity blocks
         self.block_claim_dir = PREV
         self.num_parity_blocks = int(math.ceil(config.TOTAL_NO_OF_BLOCKS/N))
-        
+
         # if the number of parity blocks is not a multiple of N, continue incrementing
         # until it is.
         while (self.num_parity_blocks % N > 0):
-                self.num_parity_blocks += 1
-        
+            self.num_parity_blocks += 1
+
         self.parity_blocks = [None for i in range(self.num_parity_blocks)]
+        
+        # changed in the initialize function
+        self.first_data_block_num = 0 
+
+        # create an (N-1) x (N) matrix to map parity indexes with
+        r = N-1	# remainders
+        s = N	# number of servers
+        self.offset_table = [[None for i in range(s)] for j in range(r)]
 
     # initialize the servers
     def Initialize(self):
@@ -56,12 +63,26 @@ class client_stub():
             for i in range(N):
                 self.proxy[i].Initialize()
 				
+        # initialize the offset table (i'm very sorry this is so ugly)
+            count = 0
+            for r in range(N-1): 
+                for s in range(N):
+                    self.offset_table[r][s] = int(math.floor(count/(N-1)))
+                    count += 1
+                print(''.join(str(x) for x in self.offset_table[r][0:N]))
+				
             # claim the parity blocks and switch the direction of block claiming
             for i in range(self.num_parity_blocks):
                 self.parity_blocks[i] = self.get_valid_data_block()
         
             # switch block claim direction
             self.block_claim_dir = NEXT
+
+            # assuming the server has not crashed yet, the next block will be
+            # one higher than the last claimed parity block. This should be a
+            # physical data block.
+            (dummy, self.first_data_block_num) = self.__translate_virtual_to_physical_block(self.parity_blocks[-1] + 1)
+            print("EXPECTED FIRST DATA BLOCK: " + str(self.first_data_block_num))
 			
             print("NUMBER OF PARITY BLOCKS CLAIMED: " + str(self.num_parity_blocks))
         
@@ -99,22 +120,56 @@ class client_stub():
     #                            BLOCK FUNCTIONS
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
         
-	'''
-	SUMMARY: get_data_block
-	Return the contents of a data block on the appropriate server.
-	
-	NOTE:
-	This function handles if the requested server of the virtual block number
-	has a failure by reconstructing the data using the blocks from other servers.
-	'''
+    '''
+    SUMMARY: get_data_block
+    Return the contents of a data block on the appropriate server.
+    
+    NOTE:
+    This function handles if the requested server of the virtual block number
+    has a failure by reconstructing the data using the blocks from other servers.
+    '''
     def get_data_block(self, virtual_block_number):
         try:
             (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialMessage = pickle.dumps(physicalBlock)
             p = self.proxy[serverNum]
             rx = p.get_data_block(serialMessage)
-            deserialized = pickle.loads(rx)
-            return deserialized[0]
+            (data, state) = pickle.loads(rx)
+                    
+            # check if the data is valid, or if it has to be reconstructed before returning..
+            if state == True:
+                # data is good..
+                return data
+            else:
+                # data is bad.. reconstruct the block using all other blocks
+                print("Server failure detected.. reconstructing data") 
+                serverNumList = [None for i in range(N-1)]
+                pBlockNumList = [None for i in range(N-1)]
+                # check if the target block is a parity block..
+                # if yes, rebuild using the servers/physical block numbers the parity block number maps to
+                # if no, find the other blocks and the parity block to compare for rebuilding
+                '''
+                if virtual_block_number in self.parity_blocks:
+                        (serverNumList, pBlockNumList) = self.__vparity_number_to_pblock_list(virtual_block_number)
+                else:
+                        serverNumList = test #FINISH THIS LATER
+                '''
+                        
+                # XOR to find the original block
+                originalBlockData = '\x00'
+                for i in range(len(serverNumList)):
+                    server 		= serverNumList[i] # next server/address
+                    blockNum 	= pBlockNumList[i] # next server/address
+                    
+                    p = self.proxy[server]                  # get data from the server
+                    serialBlockNum = pickle.dumps(blockNum) # get data from the server
+                    rx = p.get_data_block(serialBlockNum)   # get data from the server
+                    (data,state) = pickle.loads(rx)			# get data from the server	
+
+                    originalBlockData = self.__xor(originalBlockData, data)
+                    
+                return originalBlockData
+				
         except Exception:
             print "ERROR (get_data_block): Server failure.."
             return -1
@@ -330,13 +385,31 @@ class client_stub():
     '''
     SUMMARY: __physical_block_number_to_parity_index
     Maps physical block number and server number to the appropriate virtual parity block number.
+    (This is the ugliest algorithm I've ever made and I'm sorry for that)
     '''
     def __pblock_number_to_vparity_number(self, physical_block_num, server_num):
         # parity block list index for specified data block
-        iparity = 0 # CREATE ALGORITHM FOR THIS PART..
+        r = (physical_block_num - self.first_data_block_num)%(N-1)
+        s = server_num
+
+        offset = self.offset_table[r][s]
+
+        row = int(N * math.floor( (physical_block_num - self.first_data_block_num) / (N-1) ))
+
+        iparity = row + offset
                     
         # virtual parity block number
         return self.parity_blocks[iparity]		
+		
+    '''
+    SUMMARY: __vparity_number_to_pblock_list
+    Returns a list of server numbers and physical block numbers that are related to the parity block
+    number. (Each parity block has N-1 data blocks associated with it)
+    '''
+    def __vparity_number_to_pblock_list(self, virtual_parity_block_num):
+        serverNumList = [i for i in range(1, N-1)] # skip parity block 0 in this example
+        parityBlockNumList = [i*config.BLOCK_SIZE for i in range(1, N-1)]
+        return (serverNumList, parityBlockNumList)
         
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     #                          BLOCK NUMBER MAPPING
