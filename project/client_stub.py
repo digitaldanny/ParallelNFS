@@ -165,15 +165,35 @@ class client_stub():
     update the parity block.
     '''
     def free_data_block(self, virtual_block_number):
-        (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
-        serialMessage = pickle.dumps(physicalBlock)
-        p = self.proxy[serverNum]
 		
         try:
+            # read back the current parity block contents (FIRST READ)
+            (serverNumData, pBlockData) = self.__translate_virtual_to_physical_block(virtual_block_number) # physical block address for the data block
+            vParityNum = self.__pblock_number_to_vparity_number(pBlockData, serverNumData)	# virtual block address for the parity block
+            (serverNumParity, pParityNum) = self.__translate_virtual_to_physical_block(vParityNum) # find the physical block number and server to read/write parity
+            proxyParity = self.proxy[serverNumParity]		    	# find server to read/write parity data from
+            serialBlockNumParity = pickle.dumps(pParityNum)		# serialize parity block address
+            
+            rx = proxyParity.get_data_block(serialBlockNumParity)	# request the current parity data
+            (currParity, state) = pickle.loads(rx)			# convert the string message into real data
+			
+            # read back the current data (SECOND READ)
             (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
-            serialMessage = pickle.dumps(physicalBlock)
-            p = self.proxy[serverNum]
-            rx = p.free_data_block(serialMessage)
+            serialPBlock = pickle.dumps(physicalBlock)
+            proxyData = self.proxy[serverNum]
+                    
+            rx = proxyData.get_data_block(serialPBlock)
+            (currData,status) = pickle.loads(rx)
+                    
+            # XOR to update the parity block with data being deleted
+            newParity = self.__xor(currData, currParity)
+            
+            # update the parity block
+            serialNewParity = pickle.dumps(newParity)
+            proxyParity.update_data_block(serialBlockNumParity, serialNewParity)
+    
+            # free the selected data block (finally :P)
+            rx = proxyData.free_data_block(serialPBlock)
             deserialized = pickle.loads(rx)
             return deserialized[0]
         except Exception:
@@ -193,7 +213,6 @@ class client_stub():
     '''
     def update_data_block(self, virtual_block_number, block_data):
         try:
-            print("CS: Entered (update_data_block)")
             # read back the current data block contents (1.FIRST READ)
             (serverNumData, pBlockData) = self.__translate_virtual_to_physical_block(virtual_block_number)
             proxyData = self.proxy[serverNumData]				# find server 
@@ -209,7 +228,7 @@ class client_stub():
             serialBlockNumData = pickle.dumps(pParityNum)		# serialize data to send to the server
             
             rx = proxyParity.get_data_block(serialBlockNumData)	# request the current parity data
-            (currParity, state) = pickle.loads(rx)						# convert the string message into real data
+            (currParity, state) = pickle.loads(rx)				# convert the string message into real data
             
             # calculate the new parity block contents
             newData = list(block_data)
@@ -230,7 +249,6 @@ class client_stub():
             serialBlockData = pickle.dumps(block_data)
             rx = proxyData.update_data_block(serialBlockNum, serialBlockData)
             deserialized = pickle.loads(rx)
-            print("CS: Updated data")
             return deserialized[0]
 			
         except Exception:
@@ -304,13 +322,9 @@ class client_stub():
     def __xor(self, new, old):
         for i in range(len(new)):
             if old[i] == '\x00':
-                print("ENTER 1: before" + str(i))
                 old[i] = new[i]
             else:
-                print("ENTER 2: before" + str(i))
                 old[i] = chr(ord(new[i]) ^ ord(old[i]))
-
-            print("OLD: " + str(old[i]))
         return old
 	
     '''
