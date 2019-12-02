@@ -13,14 +13,14 @@ numbers and block numbers on the individual servers.
 '''
 class client_stub():
 
-	'''
-	SUMMARY: __init__
-	Initialize proxies, etc..
-	
-	NOTE:
-	This function initially claims ~TOTAL_NO_OF_BLOCKS/N parity blocks. If
-	the number is not a multiple of N, claim enough blocks until it is.
-	'''
+    '''
+    SUMMARY: __init__
+    Initialize proxies, etc..
+    
+    NOTE:
+    This function initially claims ~TOTAL_NO_OF_BLOCKS/N parity blocks. If
+    the number is not a multiple of N, claim enough blocks until it is.
+    '''
     def __init__(self):
         
         # load configuration file properties
@@ -32,41 +32,45 @@ class client_stub():
         for i in range(N):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
-			
-		# points to the next server to request a data block from
-		# (starts at the far end because parity_blocks claims using
-		# __prev function).
-		self.data_blk_ptr = N-1
-			
-		# claim the first NUM_BLOCKS/N virtual blocks to use as parity blocks
-		self.block_claim_dir = PREV
-		self.num_parity_blocks = math.ceil(config.TOTAL_NO_OF_BLOCKS/N)
-		
-		# if the number of parity blocks is not a multiple of N, continue incrementing
-		# until it is.
-		while (self.num_parity_blocks % N > 0):
-			self.num_parity_blocks += 1
-		
-		# claim the parity blocks and switch the direction of block claiming
-		self.parity_blocks 	= [None for i in range(self.num_parity_blocks)]
-		for i in range(self.num_parity_blocks):
-			self.parity_blocks[i] = self.get_valid_data_block()
-			
-		self.block_claim_dir = NEXT
-		print("NUMBER OF PARITY BLOCKS CLAIMED: " + str(self.num_parity_blocks))
+        
+        # points to the next server to request a data block from
+        # (starts at the far end because parity_blocks claims using
+        # __prev function).
+        self.data_blk_ptr = N-1
+        
+        # claim the first NUM_BLOCKS/N virtual blocks to use as parity blocks
+        self.block_claim_dir = PREV
+        self.num_parity_blocks = int(math.ceil(config.TOTAL_NO_OF_BLOCKS/N))
+        
+        # if the number of parity blocks is not a multiple of N, continue incrementing
+        # until it is.
+        while (self.num_parity_blocks % N > 0):
+                self.num_parity_blocks += 1
+        
+        self.parity_blocks = [None for i in range(self.num_parity_blocks)]
 
     # initialize the servers
     def Initialize(self):
         try:
+            # initialize connection to the servers
             for i in range(N):
                 self.proxy[i].Initialize()
+				
+            # claim the parity blocks and switch the direction of block claiming
+            for i in range(self.num_parity_blocks):
+                self.parity_blocks[i] = self.get_valid_data_block()
+        
+            # switch block claim direction
+            self.block_claim_dir = NEXT
+			
+            print("NUMBER OF PARITY BLOCKS CLAIMED: " + str(self.num_parity_blocks))
         
         except Exception as err :
             # print error message
             print "**ERROR CONNECTING TO SERVER**: " + str(err.message)
             print "ARGS: " + str(err.args)
             #quit()
-            
+    
     # requests servers to shut down
     def kill_all(self):
         for i in range(N):
@@ -116,12 +120,12 @@ class client_stub():
             return -1
 
 
-	'''
-	SUMMARY: get_valid_data_block
-	Return the next available virtual block number by incrementing the target
-	proxy to request a block from. After requesting a block from each server, 
-	the pointer will wrap back to 0.
-	'''
+    '''
+    SUMMARY: get_valid_data_block
+    Return the next available virtual block number by incrementing the target
+    proxy to request a block from. After requesting a block from each server, 
+    the pointer will wrap back to 0.
+    '''
     def get_valid_data_block(self):
 
         try:
@@ -129,37 +133,37 @@ class client_stub():
             p = self.proxy[self.data_blk_ptr]
             rx = p.get_valid_data_block()
             (blockNum,state) = pickle.loads(rx)
-                       
+                      
             # map physical block number to virtual block number before returning
             # to the client.
             serverNum = self.data_blk_ptr
             pBlockNum = blockNum 
             virtual_block_number = self.__translate_physical_to_virtual_block(serverNum, pBlockNum)
-			
-			# point to the next server to write data to..
-			# block_claim_dir is changed in the init function so the parity
-			# blocks and data blocks are claimed in opposite directions.
-			if self.block_claim_dir == NEXT:
-				# server pattern: 0, 1, 2, 3,.. 0, 1, 2, 3
-				self.data_blk_ptr = self.__next(self.data_blk_ptr)
-			else
-				# server pattern: 3, 2, 1, 0,.. 3, 2, 1, 0
-				self.data_blk_ptr = self.__prev(self.data_blk_ptr)
-				
+            
+            # point to the next server to write data to..
+            # block_claim_dir is changed in the init function so the parity
+            # blocks and data blocks are claimed in opposite directions.
+            if self.block_claim_dir == NEXT:
+                    # server pattern: 0, 1, 2, 3,.. 0, 1, 2, 3
+                    self.data_blk_ptr = self.__next(self.data_blk_ptr)
+            else:
+                    # server pattern: 3, 2, 1, 0,.. 3, 2, 1, 0
+                    self.data_blk_ptr = self.__prev(self.data_blk_ptr)
+            
             return virtual_block_number
 			
         except Exception:
             print "ERROR (get_valid_data_block): Server failure.."
             return -1 
     
-	'''
-	SUMMARY: free_data_block
-	Deallocate the specified data block.
-	
-	NOTE:
-	This function also reads back the current DATA/PARITY blocks to adjust
-	update the parity block.
-	'''
+    '''
+    SUMMARY: free_data_block
+    Deallocate the specified data block.
+    
+    NOTE:
+    This function also reads back the current DATA/PARITY blocks to adjust
+    update the parity block.
+    '''
     def free_data_block(self, virtual_block_number):
         (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
         serialMessage = pickle.dumps(physicalBlock)
@@ -176,60 +180,57 @@ class client_stub():
             print "ERROR (free_data_block): Server failure.."
             return -1
     
-	'''
-	SUMMARY: update_data_block
-	Write the data block data to the appropriate server.
-	
-	NOTE:
-	This function also reads back the DATA/PARITY blocks to calculate
-	and update the parity data.
-	
-	The steps are labeled as 1,2,3,4 to match guide shown in the lecture
-	slides (slide 66 - Parity in RAID 4,5)
-	'''
+    '''
+    SUMMARY: update_data_block
+    Write the data block data to the appropriate server.
+    
+    NOTE:
+    This function also reads back the DATA/PARITY blocks to calculate
+    and update the parity data.
+    
+    The steps are labeled as 1,2,3,4 to match guide shown in the lecture
+    slides (slide 66 - Parity in RAID 4,5)
+    '''
     def update_data_block(self, virtual_block_number, block_data):
         try:
-			print("CS: Entered (update_data_block)")
-			# read back the current data block contents (1.FIRST READ)
+            print("CS: Entered (update_data_block)")
+            # read back the current data block contents (1.FIRST READ)
             (serverNumData, pBlockData) = self.__translate_virtual_to_physical_block(virtual_block_number)
-			proxyData = self.proxy[serverNumData]				# find server 
-			serialBlockNumData = pickle.dumps(pBlockData)		# find physical block number
-			
-			rx = proxyData.get_data_block(serialBlockNumData)	# request the current data
-			currData = pickle.loads(rx)							# convert the string message into real data
-			print("CS: Got current data")
-			
-			# read back the current parity block contents (2. SECOND READ)
-			iparity = self.__physical_block_number_to_parity_index(pBlockData, serverNumData)	# parity block list index for specified data block
-			vParityNum = self.parity_blocks[iparity]											# virtual parity block number
+            proxyData = self.proxy[serverNumData]				# find server 
+            serialBlockNumData = pickle.dumps(pBlockData)		# find physical block number
+            
+            rx = proxyData.get_data_block(serialBlockNumData)	# request the current data
+            (currData, state) = pickle.loads(rx)							# convert the string message into real data
+            
+            # read back the current parity block contents (2. SECOND READ)
+            vParityNum = self.__pblock_number_to_vparity_number(pBlockData, serverNumData)	# virtual parity block number
             (serverNumParity, pParityNum) = self.__translate_virtual_to_physical_block(vParityNum) # find the physical block number and server to read/write
-			proxyParity = self.proxy[serverNumParity]											# find server to read/write parity data from
-			serialBlockNumData = pickle.dumps(pParityNum)		# serialize data to send to the server
-			
-			rx = proxyParity.get_data_block(serialBlockNumData)	# request the current parity data
-			currParity = pickle.loads(rx)						# convert the string message into real data
-			print("CS: Got current parity")
-			
-			# calculate the new parity block contents
-			print("CURRENT DATA")
-			print(currData)
-			
-			print("CURRENT PARITY")
-			print(currParity)
-			newParity = currParity
-			
-			# update the parity block contents (4. FIRST WRITE)
-			serialBlockNum = pickle.dumps(pParityNum)
+            proxyParity = self.proxy[serverNumParity]											# find server to read/write parity data from
+            serialBlockNumData = pickle.dumps(pParityNum)		# serialize data to send to the server
+            
+            rx = proxyParity.get_data_block(serialBlockNumData)	# request the current parity data
+            (currParity, state) = pickle.loads(rx)						# convert the string message into real data
+            
+            # calculate the new parity block contents
+            newData = list(block_data)
+           
+            # first XOR on the new data and the current data
+            midData = self.__xor(newData, currData)
+
+            # second XOR on middle data and current parity to find new parity block
+            newParity = self.__xor(midData, currParity)
+
+            # update the parity block contents (4. FIRST WRITE)
+            serialBlockNum = pickle.dumps(pParityNum)
             serialBlockData = pickle.dumps(newParity)
             rx = proxyParity.update_data_block(serialBlockNum, serialBlockData)
-			print("CS: Updated parity")
-			
-			# update the data block with new data (3. SECOND WRITE)
+            
+            # update the data block with new data (3. SECOND WRITE)
             serialBlockNum = pickle.dumps(pBlockData)
             serialBlockData = pickle.dumps(block_data)
             rx = proxyData.update_data_block(serialBlockNum, serialBlockData)
             deserialized = pickle.loads(rx)
-			print("CS: Updated data")
+            print("CS: Updated data")
             return deserialized[0]
 			
         except Exception:
@@ -270,11 +271,11 @@ class client_stub():
     #                          PARITY BLOCK MAPPING
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 	
-	'''
-	SUMMARY: __next
+    '''
+    SUMMARY: __next
     This function handles the wrap around for picking which server's 
     is pointed at.
-	'''
+    '''
     def __next(self, ptr):
         if ptr < N-1:
             ptr += 1 
@@ -282,23 +283,46 @@ class client_stub():
             ptr = 0
         return ptr
 		
-	'''
-	SUMMARY: __prev
-	'''
+    '''
+    SUMMARY: __prev
+    '''
     def __prev(self, ptr):
         if ptr > 0:
             ptr -= 1 
         else:
             ptr = N-1
         return ptr
+		
+    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+    #                         	OTHER AlGORITHMS
+    # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
 	
-	'''
-	SUMMARY: __physical_block_number_to_parity_index
-	Maps physical block number and server number to the appropriate parity block's 
-	index.
-	'''
-	def __physical_block_number_to_parity_index(self, physical_block_num, server_num):
-		return 0
+    '''
+    SUMMARY: __xor
+    This function performs the xor'ing of two blocks of data.
+    '''
+    def __xor(self, new, old):
+        for i in range(len(new)):
+            if old[i] == '\x00':
+                print("ENTER 1: before" + str(i))
+                old[i] = new[i]
+            else:
+                print("ENTER 2: before" + str(i))
+                old[i] = chr(ord(new[i]) ^ ord(old[i]))
+
+            print("OLD: " + str(old[i]))
+        return old
+	
+    '''
+    SUMMARY: __physical_block_number_to_parity_index
+    Maps physical block number and server number to the appropriate virtual parity block number.
+    '''
+    def __pblock_number_to_vparity_number(self, physical_block_num, server_num):
+        # parity block list index for specified data block
+        iparity = 0 # CREATE ALGORITHM FOR THIS PART..
+                    
+        # virtual parity block number
+        return self.parity_blocks[iparity]		
         
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     #                          BLOCK NUMBER MAPPING
