@@ -39,7 +39,7 @@ class client_stub():
 
         # claim the first NUM_BLOCKS/N virtual blocks to use as parity blocks
         self.block_claim_dir = PREV
-        self.num_parity_blocks = int(math.ceil(config.TOTAL_NO_OF_BLOCKS/N))
+        self.num_parity_blocks = int(math.ceil(config.TOTAL_NO_OF_BLOCKS))
 
         # if the number of parity blocks is not a multiple of N, continue incrementing
         # until it is.
