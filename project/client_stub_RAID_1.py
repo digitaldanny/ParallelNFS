@@ -17,7 +17,7 @@ class client_stub():
         self.virtual_inode_size = config.INODE_SIZE
         
         self.proxy = [None for i in range(N*2)]
-        for i in range(N):
+        for i in range(N*2):
             proxyName = "http://localhost:" + str(port + i) + "/"
             self.proxy[i] = xmlrpclib.ServerProxy(proxyName)
 	print(self.proxy)
@@ -27,6 +27,7 @@ class client_stub():
 
     # example provided for initialize
     def Initialize(self):
+	print("client_stub: Initialize()")
         try:
             for i in range(N*2):
                 self.proxy[i].Initialize()
@@ -43,14 +44,10 @@ class client_stub():
     serialize all requests, send to the server, and deserialize responses. If the
     server fails at some point, these functions will return -1.
     '''
-    def status(self):
+    def status(self, server):
         try:
             rx = ''
-            for i in range(N*2):
-                #rx += "+-----------------------------------------+"
-                #rx += "PORT NUM: " + str(port + i)
-                #rx += "+-----------------------------------------+"
-                rx += self.proxy[i].status()
+            rx = self.proxy[server].status()
             return pickle.loads(rx)
         except Exception:
             print "ERROR (status): Server failure.."

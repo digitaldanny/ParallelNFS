@@ -6,6 +6,7 @@ import time, client_stub, client_stub_RAID_1
 #HANDLE FOR MEMORY OPERATIONS
 client_stub = None
 
+
 #REQUEST TO BOOT THE FILE SYSTEM
 def Initialize_My_FileSystem():
     print("File System Initializing......")
@@ -45,8 +46,8 @@ def update_inode_table(inode, inode_number):
 
 
 #REQUEST FOR THE STATUS OF FILE SYSTEM FROM SERVER
-def status():
-    return client_stub.status()
+def status(server):
+    return client_stub.status(server)
 
 def kill_all():
     client_stub.kill_all()

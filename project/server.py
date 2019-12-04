@@ -36,7 +36,7 @@ def addr_inode_table():
 
 def get_data_block(block_number):
         print('+-----'*10)
-        print('get_data_block')
+        print('get_data_block, State: ' + str(state))
         print('+-----'*10)
 	passVal = pickle.loads(block_number)
 	retVal  = filesystem.get_data_block(passVal)
@@ -99,8 +99,9 @@ def status():
 
 def corruptData():
         print('+-----'*10)
-        print('corruptData')
+        print('corruptData'+str(portNumber))
         print('+-----'*10)
+	global state
         state = False
 	retVal = 'Data Corrupted in server ' + str(portNumber)
 	retVal = pickle.dumps((retVal,state))
