@@ -27,7 +27,6 @@ class client_stub():
 
     # example provided for initialize
     def Initialize(self):
-	print("client_stub: Initialize()")
         try:
             for i in range(N*2):
                 self.proxy[i].Initialize()
@@ -51,7 +50,12 @@ class client_stub():
             return pickle.loads(rx)
         except Exception:
             print "ERROR (status): Server failure.."
-            return -1     
+            return -1   
+
+    # requests servers to shut down
+    def kill_all(self):
+        for i in range(N*2):
+            self.proxy[i].kill()			
 
     # +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
     #                            BLOCK FUNCTIONS
@@ -65,7 +69,25 @@ class client_stub():
 		p = self.proxy[serverNum*2 + i]
                 rx = p.get_data_block(serialMessage)
                 deserialized = pickle.loads(rx)
+		print("Fetching data block " + str(physicalBlock) + " on server " + str(serverNum*2 + i))
+		if(deserialized[2] == True):
+		    #data has decayed
+		    #fail the read
+		    print "ERROR (get_data_block): Server data decay failure, reconstructing data.."
+		    print("Fetching data block " + str(physicalBlock) + " on server " + str(serverNum*2 + 1 - i))
+		    #read correct data from other server
+		    p1 = self.proxy[serverNum*2 + 1-i]
+		    rx = p1.get_data_block(serialMessage)
+		    message = pickle.loads(rx)
+		    #write data back to corrupted block
+		    print("Updating data block " + str(physicalBlock) + " on server " + str(serverNum*2 + i))
+		    serialIn1 = pickle.dumps(physicalBlock)
+            	    serialIn2 = pickle.dumps(message[0])
+		    p.update_data_block(serialIn1,serialIn2)
+		    return message[0]
+		#if state is true, then return message. If False server failed and read from other server in pair
 		if(deserialized[1] == True): break
+		print("Server " + str(serverNum*2) + " failure!!!")
             return deserialized[0]
         except Exception:
             print "ERROR (get_data_block): Server failure.."
@@ -73,10 +95,13 @@ class client_stub():
     
     def get_valid_data_block(self):
         try:
+	    #Retrieve two data blocks at the same time on the pair of servers
             p = self.proxy[self.distribute_load*2]
+	    p1 = self.proxy[self.distribute_load*2 + 1]
             rx = p.get_valid_data_block()
+	    rx1 = p1.get_valid_data_block()
             (blockNum,state) = pickle.loads(rx)
-            
+	    print("Fetching new data block " + str(blockNum) + " on servers " + str(self.distribute_load*2) + " and " + str(self.distribute_load*2 + 1))
             # map physical block number to virtual block number before returning
             # to the client.
             serverNum = self.distribute_load
@@ -100,6 +125,8 @@ class client_stub():
 	try:
 	    (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialMessage = pickle.dumps(physicalBlock)
+	    #Free two data blocks at the same time on the pair of servers
+	    print("Freeing data block " + str(physicalBlock) + " on servers " + str(serverNum) + " and " + str(serverNum+1))
             p1 = self.proxy[serverNum*2]
 	    p2 = self.proxy[serverNum*2 + 1]
             rx1 = p1.free_data_block(serialMessage)
@@ -115,6 +142,8 @@ class client_stub():
 	    (serverNum,physicalBlock) = self.__translate_virtual_to_physical_block(virtual_block_number)
             serialIn1 = pickle.dumps(physicalBlock)
             serialIn2 = pickle.dumps(block_data)
+	    #Update two data blocks at the same time on the pair of servers
+	    print("Updating data block " + str(physicalBlock) + " on servers " + str(serverNum) + " and " + str(serverNum+1))
             p1 = self.proxy[serverNum*2]
 	    p2 = self.proxy[serverNum*2 + 1]
             rx1 = p1.update_data_block(serialIn1, serialIn2)

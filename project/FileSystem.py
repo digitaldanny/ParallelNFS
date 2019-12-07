@@ -25,6 +25,8 @@ WRITE   = 'write'
 STATUS  = 'status'
 RM      = 'rm'
 TEST    = 'test'
+PERF    = 'perf'
+RF      = 'rf'
 
 def Initialize_My_FileSystem():
     MemoryInterface.Initialize_My_FileSystem()
@@ -64,6 +66,8 @@ class FileSystemOperations():
     def mv(self, old_path, new_path):
         interface.mv(old_path, new_path)
 
+    def rf(self):
+        MemoryInterface.rf()
 
     #CHECK STATUS
     def status(self, server):
@@ -93,10 +97,13 @@ This function runs the client interactive window for transmitting
 data to the servers.
 '''
 def main():
-    
-    Initialize_My_FileSystem()
-    fs = FileSystemOperations()
-    
+    try: 
+        Initialize_My_FileSystem()
+        fs = FileSystemOperations()
+    except Exception as err:
+        print("Error initializing filesystem. Make sure backChannel is running, then restart.")
+        return
+
     while True:        
         try:
             # split the user's response string by delimiters (white space)
@@ -157,13 +164,46 @@ def main():
                 filename    = '/file.txt'
                 msg         = 'Hi this is a test'
                 offset      = 0
-                
+                print("MKDIRS")
                 fs.mkdir(dir1)
                 fs.mkdir(dir1 + dir2)
+		print("Create")
                 fs.create(dir1 + dir2 + filename)
+		print("WRITE")
                 fs.write(dir1 + dir2 + filename, msg, offset)
+		print("READ")
                 fs.read(dir1 + dir2 + filename, offset, 17)
-                
+            
+            elif cmd == PERF:
+                # PERF: This is a dummy function used to test
+                # the performance of RAID 5 vs HW4's fileystem.
+                fs.mkdir('/a')
+                fs.create('/file.txt')
+                fs.write('/file.txt', 'Hello world', 0)
+                fs.read('/file.txt', 0, 20)
+
+                fs.write('/file.txt', 'This is an overwrite', 0)
+                fs.read('/file.txt', 0, 20)
+
+                fs.write('/file.txt', 'Even load on all servers', 0)
+                fs.read('/file.txt', 0, 20)
+
+                fs.mv('/file.txt', '/a/file.txt')
+                fs.write('/a/file.txt', 'New data at new location', 0)
+                fs.read('/a/file.txt', 0, 20)
+
+                fs.write('/a/file.txt', 'More and more and more and more', 0)
+                fs.read('/a/file.txt', 0, 20)
+
+                fs.rm('/a/file.txt')
+                fs.rm('/a')
+
+                print("TEST BENCH COMPLETE - RESULTS BELOW")
+                fs.rf()
+
+            elif cmd == RF:
+                fs.rf()
+
             else:
                 location = response[1]
                 fs.rm(location)
