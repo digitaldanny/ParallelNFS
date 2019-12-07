@@ -28,4 +28,4 @@ class Inode_Block():
 
 class Data_Block():
     def __init__(self, BLOCK_SIZE):                                 
-        self.block = ["\0"]*BLOCK_SIZE                                          #EMPTY BLOCK WILL CONTAIN NULL VALUES INITIALLY
+        self.block = ["\0"]*(BLOCK_SIZE+16)                                          #EMPTY BLOCK WILL CONTAIN NULL VALUES INITIALLY

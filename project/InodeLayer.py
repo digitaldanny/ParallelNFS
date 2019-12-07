@@ -89,7 +89,6 @@ class InodeLayer():
         for i in range(blockOffset, len(inode.blk_numbers)):
             if inode.blk_numbers[i] != -1: # only continues to check blocsk if the current block is defined
                 block = interface.BLOCK_NUMBER_TO_DATA_BLOCK(inode.blk_numbers[i]) # next 512 bytes of data
-                
                 if (offset + length) <= config.BLOCK_SIZE: # end of the read
                     # if the rest of the bytes requested are located in the current
                     # block, enter.
@@ -191,7 +190,7 @@ class InodeLayer():
                 return ['\0' for i in range(config.BLOCK_SIZE)]
        
         # _WRITE_TO_OFFSET BEGIN ----------------------------------------------
-        self.free_data_block(inode, (int)(math.floor(offset/config.BLOCK_SIZE)))
+        self.free_data_block(inode, ((int)(math.floor(offset/config.BLOCK_SIZE))+1))
         inode.size = offset
         
         # Locate the index of the block number in the inode.block_nums referenced by the input offset.

@@ -36,11 +36,11 @@ def addr_inode_table():
 
 def get_data_block(block_number):
         print('+-----'*10)
-        print('get_data_block')
+        print('get_data_block, State: ' + str(state))
         print('+-----'*10)
 	passVal = pickle.loads(block_number)
-	retVal  = filesystem.get_data_block(passVal)
-	retVal  = pickle.dumps((retVal,state))
+	(retVal,decay)  = filesystem.get_data_block(passVal)
+	retVal  = pickle.dumps((retVal,state,decay))
 	return retVal
 
 def get_valid_data_block():	
@@ -99,12 +99,28 @@ def status():
 
 def corruptData():
         print('+-----'*10)
-        print('corruptData')
+        print('corruptData'+str(portNumber))
         print('+-----'*10)
+	global state
         state = False
 	retVal = 'Data Corrupted in server ' + str(portNumber)
 	retVal = pickle.dumps((retVal,state))
 	return retVal
+
+def corruptDataBlock(dataBlock):
+	passVal = pickle.loads(dataBlock)
+	print('+-----'*10)
+        print('corruptDatablock'+str(passVal))
+        print('+-----'*10)
+	retVal = filesystem.corrupt_data_block(passVal)
+	print("Data Corrupted!")
+	retVal = 'Data Corrupted in server ' + str(portNumber)
+	retVal = pickle.dumps((retVal,state))
+	return retVal
+
+def rf():
+    filesystem.rf()
+    return pickle.dumps(0)
 
 def kill():
         print('+-----'*10)
@@ -120,17 +136,19 @@ server = SimpleXMLRPCServer(("localhost",portNumber))
 print ("Listening on port " + str(portNumber) +   "...")
 
 server.register_function(corruptData, 			"corruptData")
+server.register_function(corruptDataBlock, 		"corruptDataBlock")
 server.register_function(configure, 		   	"configure")
 server.register_function(Initialize, 		   	"Initialize")
 server.register_function(addr_inode_table, 	   	"addr_inode_table")
 server.register_function(get_data_block, 	   	"get_data_block")
-server.register_function(get_valid_data_block, 	"get_valid_data_block")
+server.register_function(get_valid_data_block, 	        "get_valid_data_block")
 server.register_function(free_data_block, 		"free_data_block")
-server.register_function(update_data_block, 	"update_data_block")
-server.register_function(update_inode_table, 	"update_inode_table")
-server.register_function(inode_number_to_inode, "inode_number_to_inode")
-server.register_function(status, 				    "status")
-server.register_function(kill,                  "kill")
+server.register_function(update_data_block, 	        "update_data_block")
+server.register_function(update_inode_table, 	        "update_inode_table")
+server.register_function(inode_number_to_inode,         "inode_number_to_inode")
+server.register_function(status, 			"status")
+server.register_function(kill,                          "kill")
+server.register_function(rf,                            "rf")
 #server.serve_forever()
 
 while not Quit: server.handle_request()

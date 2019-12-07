@@ -44,10 +44,19 @@ def update_data_block(block_number, block_data):
 def update_inode_table(inode, inode_number):
     client_stub.update_inode_table(inode, inode_number)
 
+def rf():
+    print("+-----"*5)
+    print("SERVER REQUESTS")
+    print("+-----"*5)
+    client_stub.dispReq()
+    print("+-----"*5)
+    print("SERVER REQUESTS")
+    print("+-----"*5)
+    client_stub.dispFail()
 
 #REQUEST FOR THE STATUS OF FILE SYSTEM FROM SERVER
-def status():
-    return client_stub.status()
+def status(server):
+    return client_stub.status(server)
 
 def kill_all():
     client_stub.kill_all()
