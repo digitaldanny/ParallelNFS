@@ -27,7 +27,6 @@ class client_stub():
 
     # example provided for initialize
     def Initialize(self):
-	print("client_stub: Initialize()")
         try:
             for i in range(N*2):
                 self.proxy[i].Initialize()
